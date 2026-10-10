@@ -35,15 +35,21 @@ Windows 不承担任何实现角色，只通过浏览器从网络访问前端页
 
 ### 0.1 仓库放在 Ubuntu 的文件系统上
 
-两个仓库同级摆放在 `/home/zsw/work/agent_development/`：
+文档、实现和两个密码库源码仓库同级摆放在 `/home/zsw/work/agent_development/`：
 
 ```
 /home/zsw/work/agent_development/
 ├── Agent-development-doc/     ← 指南（静态 Markdown）
-└── Agent-development-code/    ← 实现仓库
+├── Agent-development-code/    ← 实现仓库
+├── openssl/                   ← OpenSSL 官方源码仓库
+└── GmSSL/                     ← GmSSL 官方源码仓库
 ```
 
 同级是硬要求：指南里的 `../Agent-development-code/` 相对链接否则会断。
+
+两个密码库同样直接放在上述父目录，不嵌套在文档、实现或`_deps`中；目录大小写固定为`openssl`、`GmSSL`。
+各仓库独立管理版本。编译安装使用单独受控前缀，不能把源码位置当作运行时已安装路径。
+如需克隆GmSSL-Python绑定源码，也放在此父目录同级。本段是后续目录约定，不声明这些源码已准备完成。
 
 **不要**把实现仓库放到 `/mnt/c`、`/mnt/d` 这类 Windows 挂载点：它们走 9P 协议，
 venv、node_modules 这种大量小文件操作会慢数倍。实现仓库必须在 Ubuntu 的 ext4 上。
@@ -118,7 +124,7 @@ curl -s http://127.0.0.1:11434/api/version
 
 # 模型
 ollama list
-ollama pull qwen3.5:4b               # Phase 0 唯一必需模型（待拉取）
+ollama pull qwen3.5:4b               # Phase 0 唯一必需模型；仅缺失时拉取
 ollama run qwen3.5:4b "用一句话说明工具调用"
 ollama ps
 ```
@@ -344,7 +350,9 @@ GPU 不可用可用 CPU 4B 或 CPU reranker，明确标记后不能与 GPU basel
 另外 `qwen3.5:27b`（17.48 GB）> 可用显存 13.4 GB，选它作可选配置 C 时必然 CPU offload，
 其延迟不可与 4B/9B 组直接并列，必须单独标注。
 
-### 8.3 Phase 0 未完成项
+### 8.3 Phase 0 起始快照的未完成项
+
+下列是起始记录，不是实时待办。当天后续只读核对见§8.5；学习开始时仍须重新运行验证。
 
 - [ ] 拉取 `qwen3.5:4b`（Phase 0 唯一必需模型）
 - [ ] Ubuntu 侧 `docker-compose-plugin`
@@ -359,3 +367,17 @@ GPU 不可用可用 CPU 4B 或 CPU reranker，明确标记后不能与 GPU basel
 实现仓库内有 `docs/environment.md`（同一份数据的可读版）与
 `scripts/selftest.py`（可执行契约）。**两处不一致时以本文件的实测表为准，
 并同步修正实现仓库**——不能只改一处。
+
+### 8.5 同日后续只读核对
+
+本次学习指南编写时只读核对Ubuntu，未实施应用代码或安装操作：
+
+- 文档仓库提交`55c759a`，实现仓库提交`242aa44`；实现仓库工作区干净。
+- 实现仓库`.env.example`已使用`http://127.0.0.1:11434`和`qwen3.5:4b`。
+- `.venv/bin/python`为3.12.13；系统Python仍为3.10.12。
+- `ollama list`已有`qwen3.5:4b`，短ID为`d8b0f5e9760c`。该短ID不替代实验记录中的完整digest。
+- OpenSSL CLI为3.0.2；Python库的OpenSSL后端版本需要后续单独核对。
+- 核对时未发现`uv.lock`、工具/Loop实现与`test_*.py`；已有venv或模型不等于Phase0已验收。
+- 本次未检查GmSSL安装、真实模型请求、compose、GPU推理与应用运行，不能据此勾选完成。
+
+后续任务以[逐步学习指南](05-UBUNTU-STEP-BY-STEP.md)的P0检查开始，密码适配路线见[业务范围](06-CRYPTO-AGENT-SCOPE.md)。上面的初始实测表保留为历史，不覆盖新实验的环境锁。

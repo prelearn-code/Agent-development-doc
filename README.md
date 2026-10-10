@@ -8,6 +8,11 @@
 本包是学习与工程设计文档，包含评测种子和离线校验工具；应用代码在独立的
 `Agent-development-code` 仓库实现。
 
+**当前学习主题**：以 OpenSSL/GmSSL 的简单封装作为业务工具，学习完整的 AI Agent
+开发流程，包含工具调用、API、数据库、审批恢复、评测、前端与部署。本次修订只编写文档，
+不实现应用代码。入门请先读 [05-UBUNTU-STEP-BY-STEP.md](05-UBUNTU-STEP-BY-STEP.md)，
+业务范围读 [06-CRYPTO-AGENT-SCOPE.md](06-CRYPTO-AGENT-SCOPE.md)。
+
 **实现边界（2026-10-10 确定）**：仓库、Ollama、Docker、数据库、向量库、API 与前端
 **全部运行在 Ubuntu 内**，Windows 不承担任何实现角色。最终交付物是一个**前端页面**，
 验收方式就是「Windows 能用浏览器从网络打开它」。详见 [01-ENVIRONMENT.md](01-ENVIRONMENT.md) §0 与 §5。
@@ -50,6 +55,8 @@
 | [REVISION-2026-10-10.md](REVISION-2026-10-10.md) | 本次修订与验证范围 | 变更记录 |
 | [03-LEARNING-ORDER.md](03-LEARNING-ORDER.md) | 入门与每周节奏 | 学习方法 |
 | [04-AI-ASSISTED-DEV.md](04-AI-ASSISTED-DEV.md) | AI 辅助与独立能力验收 | 人机分工 |
+| [05-UBUNTU-STEP-BY-STEP.md](05-UBUNTU-STEP-BY-STEP.md) | 每周20–25h、前两周、逐阶段任务与指标 | 通用路线的详细执行方法 |
+| [06-CRYPTO-AGENT-SCOPE.md](06-CRYPTO-AGENT-SCOPE.md) | OpenSSL/GmSSL适配、首版、密钥与证书场景 | 密码业务范围与验收设计 |
 | [checklist.md](checklist.md) | 阶段交付物与检查 | 只引用上述契约，不重新定义 |
 
 **2026-10-10 补充修订（已按 Ubuntu 单机重写）**：环境拓扑改为
@@ -62,11 +69,12 @@
 
 ## 4. 从今天开始
 
-1. 选择真实领域、三份文档和一个数据源；没有真实领域时先使用明确标注为 synthetic 的小型测试夹具。
-2. 完成 Phase 0 核心环境，先只拉 `qwen3.5:4b`。不要求一次启动全部服务。
-   当前环境的实测状态与缺口见 [01-ENVIRONMENT.md](01-ENVIRONMENT.md) §8。
-3. 做 M1 安全工具和非流式 Loop，再实现原生 NDJSON 流解析。
-4. 修改 Prompt 前收集回归问题；M3 开始形成可冻结的数据集。
+1. 读详细指南第2节与第4节，在 Ubuntu 重新检查当前环境。先准备一张公开测试证书和一个小型非敏感文件。
+2. 依次完成 P0 01–04：环境、依赖锁、最小模型请求和首个测试。`qwen3.5:4b` 在最新只读核对中已下载，缺失时才拉取；不一次启动全部服务。
+3. 先直接实现并核对只读证书解析/文件摘要，再封装为安全工具，最后接非流式手写 Loop。流式、API、数据库和前端按阶段增加。
+4. 每个任务保存真实证据和自己的说明。修改 Prompt 前收集回归问题；M3 建操作说明知识库，M4 再正式接审批的写操作。
+
+今天只需完成 Phase 0 的最小闭环。完整路线含余量520–565h，按已选择的每周20–25h约21–29周；先可用首版的裁剪方式见业务范围第2节。
 
 在本包根目录运行离线检查：
 
@@ -78,12 +86,24 @@ python3 scripts/check_docs.py
 
 种子共 60 条 RAG、25 条 Tool、40 条综合用例，均是待人工审定的草稿。60 行 gold 映射模板不是另外 60 个测试。源文档尚未入库时不伪造证据 ID，也不将 draft 结果写成 baseline。
 
+这些种子仍是原完整性审计领域的参考草稿。本次没有把它们改成密码业务用例；后续新增密码工具时须同步registry、schema/validator、fixtures与gold审定。文档检查通过不代表新业务已实现或评测通过。
+
 ## 5. 实现仓库与同步
 
-应用实现建在**独立仓库** `Agent-development-code`，与本文档同级摆放在
-`/home/zsw/work/agent_development/`（Ubuntu 的 ext4，**不要**放 `/mnt/c`、`/mnt/d`）。
+文档仓库、实现仓库以及两个密码库源码仓库统一放在
+`/home/zsw/work/agent_development/`（Ubuntu 的 ext4，**不要**放 `/mnt/c`、`/mnt/d`）：
 
-两个仓库必须**同级摆放**，否则本文档里的 `../Agent-development-code/` 相对链接会断。
+```text
+/home/zsw/work/agent_development/
+├── Agent-development-doc/     学习文档仓库
+├── Agent-development-code/    Agent 实现仓库
+├── openssl/                   OpenSSL 官方源码仓库
+└── GmSSL/                     GmSSL 官方源码仓库
+```
+
+**四个仓库共享同一个父目录，彼此同级**。两个密码库不放进文档仓库、实现仓库或额外的`_deps`子目录。
+Ubuntu区分大小写，目录名统一为`openssl`与`GmSSL`。文档与实现同级也保证`../Agent-development-code/`链接有效。
+源码目录与编译安装前缀分别记录，源码同级不表示要覆盖系统OpenSSL。GmSSL-Python若另行克隆源码，也作为该父目录下的独立同级仓库。本次只更新约定，尚未克隆或移动密码库。
 
 同步方式、目录约定与新机器部署步骤见实现仓库的
 [docs/GIT-SYNC.md](../Agent-development-code/docs/GIT-SYNC.md)。

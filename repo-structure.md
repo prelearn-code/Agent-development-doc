@@ -6,7 +6,7 @@
 
 ```text
 Agent-development-code/
-  pyproject.toml / uv.lock / .env.example / tasks.ps1
+  pyproject.toml / uv.lock / .env.example / tasks.sh
   infra/compose.yml / migrations/ / dockerfiles/
   src/lpa/
     core/         Pydantic 契约、枚举、纯计算；无外部 IO

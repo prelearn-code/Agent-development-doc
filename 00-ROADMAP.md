@@ -8,6 +8,8 @@
 
 ## 1. 依赖与提前落地的护栏
 
+当前业务主题是OpenSSL/GmSSL密码工具Agent，重点是全栈Agent开发。逐步操作、学习内容与指标见[05-UBUNTU-STEP-BY-STEP.md](05-UBUNTU-STEP-BY-STEP.md)，领域工具与权限范围见[06-CRYPTO-AGENT-SCOPE.md](06-CRYPTO-AGENT-SCOPE.md)。本文件保留16个目标、通用契约与完整工时；原完整性审计数据只作参考，新业务评测需重新标注。
+
 ```text
 Phase 0 → M1 手写 Loop → M2 API/数据库 → M3 RAG → M4 Tool/MCP/Graph → M5 工程评测 → M6 UI/部署
                    安全执行入口、预算、路径与隔离从 M1 开始；评测问题从第一天收集
@@ -27,9 +29,9 @@ Phase 0 → M1 手写 Loop → M2 API/数据库 → M3 RAG → M4 Tool/MCP/Graph
 
 学习包、类型、Pydantic、async、异常、HTTP client、配置与结构化日志。统一 `ToolResult` 为 Pydantic `BaseModel` 泛型，序列化使用 `model_dump_json()`；定义见接口文档。
 
-实现 calculator、read_file、query_database 的 fixture adapter、run_python 的最小版本。calculator 使用受限 AST；read_file 解析规范路径并核对获授权资源，处理符号链接与挂载点边界，限制大小。query_database 接受结构化参数，M1 查 JSON fixture，M2 接只读数据库。
+当前主线先实现公开测试证书解析与授权文件摘要，随后封装简单验签与受控小文件加解密。固定OpenSSL/GmSSL适配入口，所有资源由服务端ID解析，不能透传模型shell参数；正式写操作开放前落实对应审批。calculator、read_file、query_database可作为通用练习：calculator使用受限AST；read_file处理规范路径、符号链接与授权；query_database在M1查fixture，M2接只读数据库。
 
-`run_python` 首先只支持受信任且版本固定的统计模板；需要执行模型生成脚本时，必须先通过 Docker Sandbox 验收。Sandbox 无网络、无秘密、非 root、只读根文件系统、限制 CPU/内存/PID/输出、仅挂载本次任务输入和输出目录，不挂载 Docker socket。不能降级为宿主机执行不可信代码。容器或子进程超时必须 terminate/kill、wait 和清理，`asyncio.wait_for` 本身不负责杀子进程。
+`run_python`在当前密码工具主线是选修，固定库封装不需要任意代码执行能力。若引入，首先只支持受信任且版本固定的模板；需要执行模型生成脚本时，必须先通过Docker Sandbox验收。Sandbox无网络、无秘密、非root、只读根文件系统、限制CPU/内存/PID/输出，仅挂载本次任务输入输出，不挂载Docker socket。不能降级为宿主机执行不可信代码。容器或子进程超时必须terminate/kill、wait和清理，`asyncio.wait_for`本身不杀子进程。
 
 Done：参数错误、未知工具、文件缺失、路径越界、空结果、超时清理、输出超限均有检查；空结果返回 success=True。所有调用走 `execute_tool`，M1 即拒绝未授权资源并审计。学习者能解释生命周期与边界，标记 `m1-tools-done`。
 
@@ -41,7 +43,7 @@ Done：参数错误、未知工具、文件缺失、路径越界、空结果、�
 
 Loop 需要 MAX_STEPS、总 deadline、token/输出预算、未知工具拒绝、失败回传、重复调用熔断。执行器自动重试仅限已批准为可重试的幂等操作；模型新提出的调用也要经过预算、权限和动作去重，不能绕过 retry=0。
 
-Done：calculator / get_current_project / query_database 三工具完成单步、多步、多调用和失败任务；保存原始 NDJSON Trace。写五问说明：调用与参数由谁产生、结果如何回到上下文、停止条件是什么、失败如何处理，引用实际报文。非流式与流式得到相同工具计划，标记 `m1-done`。
+Done：当前只读密码工具完成单步、多步、多调用与失败任务；保存原始NDJSON Trace。写五问说明：调用与参数由谁产生、权限由谁检查、结果如何回上下文、停止条件、失败处理，并引用实际报文。流式与非流式遵守相同协议和执行策略，完成相同任务类型；不要求随机模型每次生成完全一致的计划。标记`m1-done`。
 
 ## 4. M2：LLM Backend Developer（60h，W7~W11）
 
@@ -88,6 +90,8 @@ Done：冻结 corpus/chunk/index manifest，完成四组消融并列出失败用
 ### 目标七：Tool 工程化（30h）
 
 ToolSpec 的 schema、timeout、permission、risk、read_only、idempotent、max_retries、handler 统一定义。search_knowledge/query_database/read_file 为 L0；受限统计模板为 L1；任意脚本为 L3；run_experiment 为 L3。写工具默认审批，破坏性工具默认禁止。
+
+密码领域的摘要/公开证书解析/元数据为只读起点，加密、解密、签名、轮换与测试签发按[业务策略](06-CRYPTO-AGENT-SCOPE.md)映射本地风险；敏感解密不因“读取”而自动归L0。真实密钥、口令与解密文件内容不回传给模型。默认不开放导出、销毁和系统信任修改。
 
 统一执行入口：规范化参数 → schema/业务校验 → RBAC/资源 → 绑定动作的审批 → action intent → Sandbox/执行 → 输出校验 → 完成与审计。所有拒绝、失败、取消和超时也记录；风险由本地策略决定，MCP 注解不能自授权限。
 
@@ -173,9 +177,9 @@ Done：干净 clone → 配置 → 安装固定环境/拉模型 → 迁移 → �
 
 ### 综合项目（15h）
 
-任务：检索原理 → 查历史 → 提议 100MB/500MB/1GB 实验 → 审批 → 执行 → 计算对比 → Verifier → 带版本化来源的报告。数据规模统一明确 MB/GB 十进制；若使用二进制则标 MiB/GiB。
+当前任务：上传测试文件/公开证书→只读检查→查密钥元数据→提议加密或轮换→固定动作审批→执行→结果与版本验证→完整网页审计。补一条测试CSR/签发或证书链验证流程；故障恢复不重复密码动作。原100MB/500MB/1GB完整性审计实验是另一个领域示例，不是当前毕业任务；复用其数值练习时仍遵守MB/GB十进制、MiB/GiB二进制。
 
-验收：UI 每步可见、恢复不重复实验、正确事实与引用绑定、审计包含审批/失败/拒绝、完整任务加入冻结 scenario。标记 `m6-done`。15h 只预算已有模块集成；领域算法从零实现和大量真实实验另列工时。**交付复现方式**：在 Ubuntu 内启动后，Windows 用浏览器访问前端地址即可看到全过程；这是唯一的验收入口。
+验收：UI每步可见，密码结果与实际状态一致，恢复不静默重复动作，正确事实/引用/版本绑定，审计包含审批/失败/拒绝，完整任务加入冻结scenario。标记`m6-done`。15h只预算已有模块集成；密码算法研发、完整PKI和硬件设备另列工时。**交付复现方式**：Ubuntu启动，Windows浏览器查看全过程，无Windows实现步骤。
 
 ## 9. 12 周最小路径
 
