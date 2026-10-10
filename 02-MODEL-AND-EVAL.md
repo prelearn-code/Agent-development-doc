@@ -1,0 +1,119 @@
+# 02 - 模型矩阵、指标与实验协议
+
+> 本文件定义指标；数据记录字段见 [eval/dataset.schema.json](eval/dataset.schema.json)，执行与标注流程见 [eval/README.md](eval/README.md)。基线在实测后冻结，以下性能/显存数值仅用于选起点。
+
+## 1. 模型与推理配置
+
+| 角色 | 起点 | 规则 |
+|---|---|---|
+| Controller A/B | qwen3:4b / qwen3:8b，同量化 | 比参数量时同模型族、template、思考模式 |
+| 可选 C | qwen3:14b | 16GB 需实测上下文与共驻留预算 |
+| Embedding | bge-m3 dense，1024维 | Ollama 仅 dense；learned sparse 另用 FlagEmbedding |
+| Reranker | BAAI/bge-reranker-v2-m3 | CPU/GPU 是独立环境变量，必须记录 |
+| Judge | 固定的独立模型/版本 | 所有待比较 Controller 使用相同 Judge |
+
+比较 4B/8B 时可用固定 14B Judge；比较包含 14B 时另选全组统一 Judge 或人工审定，不能只给 14B 组换一个 8B Judge。不同模型并不能保证无偏；Judge 随机顺序、隐藏系统身份，与人工标注校准。不能假设大模型 Judge 一定偏严。
+
+固定 think=false、temperature=0（或明确预设）、seed（若后端支持）、num_ctx、输出预算、MAX_STEPS、工具池、router、模板、KV cache、并行度。即使固定 seed 也不承诺 GPU 结果逐 bit 相同。结构化输出不能代替执行前 schema/业务校验。
+
+16GB 应监控桌面/其他进程、权重、KV cache 和 PyTorch 开销，不能将下载大小当占用。OLLAMA_MAX_LOADED_MODELS=1 只限制 Ollama，自行启动的 reranker 仍会占 GPU。单槽下实时 embed/rewrite/controller 会换模，延迟计入生产端到端；检索-only 预计算 query embeddings 是独立实验，不能声称代表在线延迟。
+
+## 2. RAG 指标
+
+令 Q+ 为有可回答且完整 gold 的问题，Q- 为明确无答案问题。R_K(q) 为 top-K 去重结果，G(q) 为 gold 集合；K、候选级/最终级与 corpus/chunk 版本均写报告。
+
+```text
+Hit@K = mean_q[ |R_K(q) ∩ G(q)| > 0 ]
+Recall@K = mean_q[ |R_K(q) ∩ G(q)| / |G(q)| ]       q 属于 Q+
+MRR@K = mean_q[ 1 / 首个 relevant rank ]           无命中记0
+EvidenceCoverage@K = mean_q[已覆盖必要事实槽数 / 必要事实槽数]
+```
+
+chunk/doc 两级分别计算；同文档多个 chunk 的 doc ranking 按首次出现去重。多证据任务不能用 Hit 替代 Recall；gold 若是不完整相关性标注，报告为 annotated Recall，不声称全语料 Recall。相关性与答案所需证据槽是不同标注，必要事实槽允许多个等价 chunk。
+
+Q- 不进入正样本 Recall/MRR 分母：报告 Correct Refusal Rate（合理拒答/无答案样本）、False Refusal Rate（误拒答/可回答样本）与样本数。真实存在答案但检索失败仍是正样本失败，不能改标为 no_answer。[信息检索 Recall 定义](https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-unranked-retrieval-sets-1.html)
+
+引用分别报告：Citation Validity（存在、版本、授权和定位有效比例）、Citation Support（引用支持其绑定断言比例）、Claim Citation Coverage（需要引用的事实有有效支持比例）。支持性判断使用固定 Judge/NLI + 人工抽检。页码按证据真实区间，不统一放宽 ±1。要求引用却没有引用记失败；合法无引用任务记 N/A，不能统一记0。
+
+Faithfulness = 被证据支持的原子事实断言/全部原子事实断言；Answer Correctness 按关键事实槽、数值容差、单位与期望结论判定。空分母记 N/A；无事实的空回答还要受任务成功谓词约束，不能因 Faithfulness N/A 自动通过。
+
+## 3. Agent 指标
+
+| 指标 | 口径 |
+|---|---|
+| Intent Accuracy | 有 gold_intent 的适用样本；预测需记录在结果 |
+| Tool Exact Match | 与任一 allowed_tool_plans 完全一致，顺序/重复敏感 |
+| Tool Set Match | 与任一允许计划的工具集合一致；不证明调用次数/顺序正确 |
+| First Tool Accuracy | 首工具属于允许计划首项；空计划双方无调用才通过 |
+| Argument Accuracy (conditional) | 工具计划正确且有 gold_calls 时，按对应调用的字段/语义比较 |
+| Joint Call Accuracy | 所有需验证的工具/调用次序/参数都正确，占适用总样本比例 |
+| Task Success | 全部显式成功谓词和安全必要条件成立才成功 |
+| Unsupported Claim Rate | 无支持原子事实/全部事实，固定 Judge、样本量与区间 |
+| Unauthorized Action Rate | 实际执行越权动作的 Security 场景数/有效 Security 场景数 |
+
+必须分开 attempt、denied 与 executed：模型提出路径越界调用而执行器拒绝，可以安全通过；真实读取越权文件一定失败。intent_security 标签只是数据标签，不授权也不阻止动作。Unauthorized Action Rate 必须为0且逐例无副作用；有限样本的0不证明系统没有任何安全漏洞。
+
+gold_calls 按 tool_id + occurrence 绑定参数；多解可给参数约束而非全文字符串。gold_args 单 dict 不能表达多次同工具调用，因此已迁移到 gold_calls。字段缺失按 schema defaults 规范化，不能把任意字符串都小写或把所有数值字符串强制转类型。单位固定 SI：MB=1,000,000 bytes、GB=1,000,000,000 bytes；MiB/GiB 为二进制，禁止把100MB等同104857600 bytes。
+
+Task Success 使用 success_criteria：must_call_tools 为 proposed attempt 层；must_not_call_tools 禁止提出；must_execute_tools/must_not_execute_tools 为实际执行层；allowed_tool_plans 为计划层；final_answer_all_of 与 any_of 明确区分逻辑；expected_values 绑定 subject/metric/unit/数值与容差；state_assertions 验证资源/审批/恢复/Memory 状态。
+
+关键词只适合作为辅助，拒答不能要求同时出现“未找到”“没有找到”“未提及”。min_citations=0 单独不是有效成功谓词；verifier_passed=true 单独也不能证明答案正确。不会定义成功条件的用例保留 draft，不拼一个弱规则使它进 baseline。
+
+## 4. 延迟、token 与显存
+
+串行运行 baseline；并发实验单列。报告 total_ms、time_to_first_token_ms、time_to_verified_final_ms、retrieval/rerank/LLM/tool/verify_ms。LLM load 与推理分开，warm total 仍包含流程中真实换模。人工审批等待不混入系统 latency，单报 approval_wait_ms；自动审批 fixture 只能批准具体 action hash。
+
+每次配置预热固定模型和固定路径，冷启动另外测。p50/p95/max 是基本报告，p99 在小样本时不稳，应带 n 与计算方法且不作硬门槛。超时/失败也记录耗时，不只统计成功题；并行分段耗时之和可能超过 wall clock，要注明。
+
+token 从每次 llm_calls 实际返回的 prompt/completion 计数聚合，区分 Controller、rewrite、Memory、Verifier 和离线 Judge。Judge token 不加入在线 Agent 成本；不要用不匹配 Qwen 分词器的 tiktoken 估计充当实测值。记录 think/template 与 token 来源。
+
+显存在**整次任务**周期采样，GPU总峰值、空闲基线与进程归因分别记录；Windows WDDM 无法精确归因时明确限制，不只看第一个任务或加载瞬间。
+
+## 5. 数据与实验冻结
+
+最终目标 180 条：Intent20/RAG30/Tool25/Database20/Workflow20/Memory15/Security25/Complex Task25。预算不足可先冻结100条，必须列各类样本与缺口。种子40+25+60可在划分/去重后复用，不把重复问题算新增独立样本。
+
+合成问题仅产生 draft；逐条审定 gold/关键成功条件并记录 verified_by/reviewed_at。20% 抽检只决定整批是否需要返工，不能把剩余80%标为“human verified”。近义变体、同一 source/template/场景组整体进入同一 split，避免 dev/test 泄漏。
+
+每次报告固定 dataset/schema/fixture/corpus/index hash、git_commit、环境锁、模型 digest、配置、Judge 配置与校准集。freeze 要检查没有 TODO、有效 fixture、证据清单和审核；可选工具组更改必须同步 registry 与测试，不悄悄改 gold 适配模型结果。
+
+结果保留 predicted_intent、proposed_calls、executed_actions、denied_attempts、retrieved_chunk_ids/版本、claims/citations、state_assertions、verifier、error、timings、tokens 和测试用例 ID。结果按 dataset ID 一对一关联；缺失/额外结果、重复 ID 是无效报告。
+
+## 6. 场景 Runner
+
+```python
+async def run_dataset(dataset, config, experiment_id, repetition):
+    results = []
+    for case in dataset:
+        namespace = f'{experiment_id}/{repetition}/{case.id}'
+        env = await fixture_manager.create(case.fixture_refs, namespace)
+        try:
+            if case.scenario:
+                # turns 共用逻辑用户，session keys 可不同；按步骤驱动审批/故障/恢复
+                result = await scenario_runner.run(case, env, config)
+            else:
+                result = await agent.run(case.question, user_id=env.user_id,
+                                         session_id=env.new_session())
+            results.append(await evaluate_case(case, result, env))
+        finally:
+            await fixture_manager.cleanup(env)
+    return results
+```
+
+这是应用侧待实现接口，不是本包已有 runner。namespace 必须进入测试 user/project/session/文件/collection 的映射；只给独立 session_id 不能隔离长期 Memory。带外场景动作由测试驱动执行，不能把“Session2”“kill进程”等说明作为普通用户 question 发给模型。
+
+## 7. 比较、统计与 CI
+
+同一冻结数据/环境/Judge 做配对比较，配置至少3次，报告逐次结果、均值、方差和区间。Task Success 的百分点用 pp：40题的一题=2.5pp，180题的一题约0.56pp；-2pp 阈值必须结合样本量、case 回归和置信区间解释。重复结果不允许只挑最好一次；多数投票单列为一种策略。
+
+冻结测试集禁止用于选 prompt/router threshold；用 dev 选配置，test 做最终报告。Judge 先生成所有配置结果，再统一离线判定，避免换模污染在线耗时。Judge 与人工一致率先用至少20条双标样本初测，低于80%时审查类别分歧、修规则或标指标不可靠；不能只改 Judge 直到偏好自己答案。
+
+CI 普通任务跑校验、mock 场景和确定性安全测试；本地 GPU 任务用 frozen。compare 检查全部 hash 相同，列 case-level regressions 与通过数；安全实际越权任何一条失败阻塞。性能门槛以本机 baseline 后确定，不在未测量前声明固定500ms保证。
+
+## 8. 三个必做实验
+
+1. RAG 四组消融：同语料/切分/问题，检索质量与生成结果分阶段测；rewrite 单独开关。
+2. 4B/8B±router，可选14B：同候选工具/上下文/think/Judge/fixture。压力工具池另列。
+3. Verifier：已知错误与已知正确双集，覆盖实体错绑、单位、派生值、引用版本/定位/支持，TPR/FPR附样本量和漏报误报。
+
+报告模板：问题、固定项与变量、环境与hash、适用样本数、结果/区间、失败用例、限制和下一步。按证据回答改动是否有益，不要求复杂配置必须胜过 baseline。
