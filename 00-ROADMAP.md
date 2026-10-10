@@ -1,6 +1,6 @@
 # 00 - 主学习路径
 
-> 450h 基础预算，建议含余量预留 520~565h。目标编号保留与原验收文档的对照；原件未提供。接口以 [repo-structure.md](repo-structure.md) 为准，指标以 [02-MODEL-AND-EVAL.md](02-MODEL-AND-EVAL.md) 为准。
+> 450h 基础预算，建议含余量预留 520~565h。本项目覆盖 16 个技术学习目标。接口以 [repo-structure.md](repo-structure.md) 为准，指标以 [02-MODEL-AND-EVAL.md](02-MODEL-AND-EVAL.md) 为准。
 >
 > **实现与交付边界**：全部实现（仓库、Ollama、Docker、数据库、向量库、API、前端）都在 Ubuntu 内完成，
 > Windows 不承担实现角色。**最终交付物是 M6 的前端页面**：Windows 用浏览器从网络访问它即可看到
@@ -8,7 +8,7 @@
 
 ## 1. 依赖与提前落地的护栏
 
-当前业务主题是OpenSSL/GmSSL密码工具Agent，重点是全栈Agent开发。逐步操作、学习内容与指标见[05-UBUNTU-STEP-BY-STEP.md](05-UBUNTU-STEP-BY-STEP.md)，领域工具与权限范围见[06-CRYPTO-AGENT-SCOPE.md](06-CRYPTO-AGENT-SCOPE.md)。本文件保留16个目标、通用契约与完整工时；原完整性审计数据只作参考，新业务评测需重新标注。
+当前业务主题是OpenSSL/GmSSL密码工具Agent，重点是全栈Agent开发。逐步操作、学习内容与指标见[05-UBUNTU-STEP-BY-STEP.md](05-UBUNTU-STEP-BY-STEP.md)，领域工具与权限范围见[06-CRYPTO-AGENT-SCOPE.md](06-CRYPTO-AGENT-SCOPE.md)。本文件定义16个目标、阶段依赖与完整工时。评测围绕证书、文件、密钥与审批工作流建立。
 
 ```text
 Phase 0 → M1 手写 Loop → M2 API/数据库 → M3 RAG → M4 Tool/MCP/Graph → M5 工程评测 → M6 UI/部署
@@ -17,21 +17,21 @@ Phase 0 → M1 手写 Loop → M2 API/数据库 → M3 RAG → M4 Tool/MCP/Graph
 
 关键依赖：持久化 Run/Step 支撑 Graph 与评测；文档版本、chunk 和定位元数据支撑 Citation；Tool schema 与唯一执行入口支撑审批、MCP 和 Verifier。M4 的 Verifier 节点先实现最小结构/状态/证据存在检查，M5 再完成语义与事实绑定验证。
 
-## 2. Phase 0：环境与地基（20h，W0）
+## 2. Phase 0：环境与地基（20h）
 
-核心只要求 Git、Python 3.12 虚拟环境、Ollama、`qwen3.5:4b`、测试与格式检查入口、`.env.example`。Docker 在 M1 第一次执行不可信脚本前引入；PostgreSQL 到 M2，Qdrant 与 embedding 到 M3，Redis 到需要独立 worker 时，对象存储按实际需求引入。
+核心只要求 Git、Python 3.12 虚拟环境、Ollama、`qwen3.5:4b`、测试与格式检查入口、`.env.example`。密码库按 Phase 0 选定路线在 M1 验证；Docker 与 PostgreSQL 到 M2，Qdrant 与 embedding 到 M3，Redis 到需要独立 worker 时，对象存储按实际需求引入。
 
 记录机器、GPU 空闲占用、驱动、Ollama 版本和一次真实推理结果。命令详见 [01-ENVIRONMENT.md](01-ENVIRONMENT.md)。Done：从新终端进入虚拟环境能运行最小请求和一个测试，配置中没有真实密钥，标记 `phase0-done`。安装受阻时记录降级；GPU 直通容器不作为核心完成条件。
 
-## 3. M1：LLM Developer（70h，W1~W6）
+## 3. M1：LLM Developer（70h）
 
 ### 目标一：Python 工具工程（25h，含最小理论地基）
 
 学习包、类型、Pydantic、async、异常、HTTP client、配置与结构化日志。统一 `ToolResult` 为 Pydantic `BaseModel` 泛型，序列化使用 `model_dump_json()`；定义见接口文档。
 
-当前主线先实现公开测试证书解析与授权文件摘要，随后封装简单验签与受控小文件加解密。固定OpenSSL/GmSSL适配入口，所有资源由服务端ID解析，不能透传模型shell参数；正式写操作开放前落实对应审批。calculator、read_file、query_database可作为通用练习：calculator使用受限AST；read_file处理规范路径、符号链接与授权；query_database在M1查fixture，M2接只读数据库。
+当前主线先实现公开测试证书解析与授权文件摘要，随后封装简单验签与受控小文件加解密。固定OpenSSL/GmSSL适配入口，所有资源由服务端ID解析，不能透传模型shell参数；正式写操作开放前落实对应审批。知识检索和固定元数据查询按M2/M3阶段接入。
 
-`run_python`在当前密码工具主线是选修，固定库封装不需要任意代码执行能力。若引入，首先只支持受信任且版本固定的模板；需要执行模型生成脚本时，必须先通过Docker Sandbox验收。Sandbox无网络、无秘密、非root、只读根文件系统、限制CPU/内存/PID/输出，仅挂载本次任务输入输出，不挂载Docker socket。不能降级为宿主机执行不可信代码。容器或子进程超时必须terminate/kill、wait和清理，`asyncio.wait_for`本身不杀子进程。
+密码工具使用固定库 API 或 CLI 参数数组；禁止模型选择任意程序或拼接 shell。子进程超时必须 terminate/kill、wait 和清理，等待超时本身不负责结束进程。
 
 Done：参数错误、未知工具、文件缺失、路径越界、空结果、超时清理、输出超限均有检查；空结果返回 success=True。所有调用走 `execute_tool`，M1 即拒绝未授权资源并审计。学习者能解释生命周期与边界，标记 `m1-tools-done`。
 
@@ -45,7 +45,7 @@ Loop 需要 MAX_STEPS、总 deadline、token/输出预算、未知工具拒绝�
 
 Done：当前只读密码工具完成单步、多步、多调用与失败任务；保存原始NDJSON Trace。写五问说明：调用与参数由谁产生、权限由谁检查、结果如何回上下文、停止条件、失败处理，并引用实际报文。流式与非流式遵守相同协议和执行策略，完成相同任务类型；不要求随机模型每次生成完全一致的计划。标记`m1-done`。
 
-## 4. M2：LLM Backend Developer（60h，W7~W11）
+## 4. M2：LLM Backend Developer（60h）
 
 ### 目标三：FastAPI（30h）
 
@@ -61,11 +61,11 @@ Done：浏览器和 curl 可查完整 Trace；非法用户无法读取其他用�
 
 写六个验收查询：Run 工具列表、失败调用（含 timeout）、输入参数、每次 LLM 调用实际模型/计量、Session 消息、最近 N 天失败工具排行。窗口必须参数化，7 天与 30 天用例不能共用硬编码。
 
-事务只覆盖短 DB 状态写入，不跨 LLM/实验/审批持锁。先持久化 action intent，再外部执行，最后写结果；恢复靠动作账本而不是试图让 DB 事务包含外部副作用。token 用 LLM 调用记录聚合，不能把累计 prompt token 当每条历史消息的文本长度。
+事务只覆盖短 DB 状态写入，不跨 LLM/密码操作/审批持锁。先持久化 action intent，再外部执行，最后写结果；恢复靠动作账本而不是试图让 DB 事务包含外部副作用。token 用 LLM 调用记录聚合，不能把累计 prompt token 当每条历史消息的文本长度。
 
 Done：迁移可重跑，数据重启不丢，运行账号不能篡改审计/DDL，六个查询有真实 fixture 断言，标记 `m2-done`。
 
-## 5. M3：RAG Developer（70h，W12~W15）
+## 5. M3：RAG Developer（70h）
 
 ### 目标五：基础 RAG（35h）
 
@@ -85,15 +85,15 @@ Dense、中文分词 BM25、RRF、rerank 与 rewrite 可独立配置。先 dense
 
 Done：冻结 corpus/chunk/index manifest，完成四组消融并列出失败用例、延迟与质量差异；不要求 Hybrid 必须赢，按结果解释，标记 `m3-done`。
 
-## 6. M4：Agent Developer（80h，W16~W20）
+## 6. M4：Agent Developer（80h）
 
 ### 目标七：Tool 工程化（30h）
 
-ToolSpec 的 schema、timeout、permission、risk、read_only、idempotent、max_retries、handler 统一定义。search_knowledge/query_database/read_file 为 L0；受限统计模板为 L1；任意脚本为 L3；run_experiment 为 L3。写工具默认审批，破坏性工具默认禁止。
+ToolSpec 的 schema、timeout、permission、risk、read_only、idempotent、max_retries、handler 统一定义。授权证书检查、摘要与元数据查询是只读起点；加解密、签名、轮换、CSR与测试签发按业务策略审批，导出、销毁和系统信任修改默认禁止。
 
 密码领域的摘要/公开证书解析/元数据为只读起点，加密、解密、签名、轮换与测试签发按[业务策略](06-CRYPTO-AGENT-SCOPE.md)映射本地风险；敏感解密不因“读取”而自动归L0。真实密钥、口令与解密文件内容不回传给模型。默认不开放导出、销毁和系统信任修改。
 
-统一执行入口：规范化参数 → schema/业务校验 → RBAC/资源 → 绑定动作的审批 → action intent → Sandbox/执行 → 输出校验 → 完成与审计。所有拒绝、失败、取消和超时也记录；风险由本地策略决定，MCP 注解不能自授权限。
+统一执行入口：规范化参数 → schema/业务校验 → RBAC/资源 → 绑定动作的审批 → action intent → Provider/执行 → 输出校验 → 完成与审计。所有拒绝、失败、取消和超时也记录；风险由本地策略决定，MCP 注解不能自授权限。
 
 Done：50 条工具用例，允许多个合法计划；Exact/Set/First Tool、条件参数正确率、端到端调用正确率分别报。参数按语义类型归一，MB=10^6、MiB=2^20，未知单位必须澄清。
 
@@ -115,11 +115,11 @@ action 状态：proposed → awaiting_approval → ready → executing → succe
 
 Done：审批批准/拒绝/过期、重复 approve、参数变更、执行前/执行中/执行后崩溃、两个 worker 竞争均验证；未知状态需要核对或人工处理，标记 `m4-done`。
 
-## 7. M5：Agent Engineer（90h，W21~W26）
+## 7. M5：Agent Engineer（90h）
 
 ### 目标十：Memory（20h）
 
-区分 History、Run State、长期 Memory、Knowledge。提取候选先做规则过滤；显式“记住”优先，不能仅按长度丢弃“记住用Q8”等短指令。仅从有权限、可信来源提取用户事实；文档中的指令不能写成用户偏好。
+区分 History、Run State、长期 Memory、Knowledge。提取候选先做规则过滤；显式“记住”优先，不能仅按长度丢弃“记住用中文”等短指令。仅从有权限、可信来源提取用户事实；文档中的指令不能写成用户偏好。
 
 按 user_id/project_id 检索与去重；有效 content_hash 唯一索引防并发重复，语义相似候选复核，用户改口在事务中失效旧记录并插入新记录。来源保留快照或在删除时明确失去可追溯性；实现查看、纠正和删除。检索阈值避免无关偏好注入，最多 5 条不是必须塞满 5 条。
 
@@ -127,7 +127,7 @@ Done：跨会话共享同一测试用户；不同用户/项目不共享；纠正
 
 ### 目标十一：小模型优化（15h）
 
-同族同量化比较 qwen3.5 4B/9B（Qwen3.5 无 8B 尺寸，最近的是 9B）；27B 可选。五组配置为 4B±router、9B±router、27B+router；固定候选工具池与 fixture，80 工具压力实验是选修，不能用 9 工具结果声称证明 80 工具能力。
+同族同量化比较 qwen3.5 4B/9B（Qwen3.5 无 8B 尺寸，最近的是 9B）；27B 可选。五组配置为 4B±router、9B±router、27B+router；固定候选工具池与 fixture，只对实际注册的本项目工具报告能力范围。
 
 Router 与上下文压缩分别消融；固定温度、think、num_ctx、seed 和 Judge。重复 3 次，报告每次与汇总方差；多数票是另一个配置，不替代单次准确率。
 
@@ -153,9 +153,9 @@ Done：指标报告包含适用样本数、skip 原因和 case-level 回归；�
 
 完成直接/间接注入、SQL/命令/路径/SSRF、秘密泄露、权限提升测试，新增审批重放、跨用户资源、MCP 恶意注解与 Memory 投毒。执行层与实际资源状态断言为主，不能只检索回答里的“已删除”。输入检测和分隔符是辅助，不保证消除注入。
 
-Done：被拒绝的尝试有审计；实际数据库/文件/网络副作用没有越权；Sandbox 无宿主机秘密/网络/socket；安全回归失败阻塞发布，标记 `m5-done`。
+Done：被拒绝的尝试有审计；实际数据库/文件/网络副作用没有越权；Provider 不接收任意 shell，秘密不进入模型、Trace或浏览器；安全回归失败阻塞发布，标记 `m5-done`。
 
-## 8. M6：Full-Stack Engineer（60h，W27~W34）
+## 8. M6：Full-Stack Engineer（60h）
 
 ### 目标十五：前端（30h）
 
@@ -171,19 +171,19 @@ Draft token 明确标为未验证；Verifier 完成后 final 事件替换为已�
 
 ### 目标十六：部署（15h）
 
-Compose 按 profiles 启动 API/worker/前端/DB/向量库/可选队列对象存储/MCP，**Ollama 与全部服务都在 Ubuntu 内**（Ollama 绑 `127.0.0.1`，不对外）。版本/digest 冻结、健康检查、迁移、volume、日志轮转、资源限制与网络隔离完整。API 不持有 Docker socket；只有可信 Sandbox launcher 有受控调用能力。
+Compose 按 profiles 启动 API/worker/前端/DB/向量库/可选队列对象存储/MCP，**Ollama 与全部服务都在 Ubuntu 内**（Ollama 绑 `127.0.0.1`，不对外）。版本/digest 冻结、健康检查、迁移、volume、日志轮转、资源限制与网络隔离完整。API 不持有 Docker socket、迁移密钥或bootstrap秘密。
 
 Done：干净 clone → 配置 → 安装固定环境/拉模型 → 迁移 → 启动 → smoke；重启数据不丢，端口不无条件开放；无 GPU 时明确降级，不伪报 GPU baseline。
 
 ### 综合项目（15h）
 
-当前任务：上传测试文件/公开证书→只读检查→查密钥元数据→提议加密或轮换→固定动作审批→执行→结果与版本验证→完整网页审计。补一条测试CSR/签发或证书链验证流程；故障恢复不重复密码动作。原100MB/500MB/1GB完整性审计实验是另一个领域示例，不是当前毕业任务；复用其数值练习时仍遵守MB/GB十进制、MiB/GiB二进制。
+当前任务：上传测试文件/公开证书→只读检查→查密钥元数据→提议加密或轮换→固定动作审批→执行→结果与版本验证→完整网页审计。补一条测试CSR/签发或证书链验证流程；故障恢复不重复密码动作。小文件首版使用明确的1 MiB上限，密文与签名记录格式和密钥版本。
 
 验收：UI每步可见，密码结果与实际状态一致，恢复不静默重复动作，正确事实/引用/版本绑定，审计包含审批/失败/拒绝，完整任务加入冻结scenario。标记`m6-done`。15h只预算已有模块集成；密码算法研发、完整PKI和硬件设备另列工时。**交付复现方式**：Ubuntu启动，Windows浏览器查看全过程，无Windows实现步骤。
 
-## 9. 12 周最小路径
+## 9. 首版范围裁剪
 
-必须先明确每周工时，12 周是范围裁剪，不承诺完成 450h。保留 M1、M2、小型 RAG、一个 MCP、审批/恢复与最小前端。可以减少高级检索、Memory、模型组数和标注规模；不能裁掉权限、隔离、动作幂等、审计和可执行验收。迁移保留最小 Alembic，不用 create_all 代替已有库升级。完成后按缺口补 M5，不称为完整版毕业。
+每周20–25h的完整路线之外，可先完成首版业务闭环。保留 M1、M2、小型 RAG、一个 MCP、审批/恢复与最小前端。可以减少高级检索、Memory、模型组数和标注规模；不能裁掉权限、隔离、动作幂等、审计和可执行验收。迁移保留最小 Alembic，不用 create_all 代替已有库升级。完成后按缺口补 M5，不称为完整版毕业。
 
 ## 10. 决策记录与毕业验收
 

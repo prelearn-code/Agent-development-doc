@@ -14,8 +14,8 @@ Agent-development-code/
     llm/          Ollama 原生 NDJSON adapter；兼容端点单独 adapter
     db/           ORM、短事务 repositories、授权视图
     security/     policy、executor、审批校验、审计接口
-    sandbox/      可信 launcher client；不可信代码不能接触本包
-    tools/        registry、builtin、模板与 handler
+    crypto/       OpenSSL/GmSSL adapters、能力探测、keystore接口
+    tools/        registry、密码/知识工具与 handler
     ingest/       解析、版本化 chunk 与 index manifest
     retrieval/    dense、sparse、fusion、rerank、rewrite
     mcp_adapter/  MCP client、canonical tool bridge、连接配置
@@ -35,7 +35,7 @@ Agent-development-code/
 
 Python 包使用合法可导入名称，不把 `agent-api` 目录当 import package，也不使用 `mcp` 顶级包名遮蔽第三方 SDK。M1 可以只建 core/config/tools/llm/minimal_agent。工具包默认在同一个可安装项目内；确需独立发布时再定义 workspace 包和依赖。
 
-core 不依赖 IO 层；llm/db 依赖 core；tools 通过注入 ports 使用 db/retrieval/sandbox；graph 编排上述模块；api/worker 装配。executor 调 handler，handler 不回调 graph/api。使用 AST/import-linter 检查分层与唯一 handler 调用点，不用简单 grep 作为安全证明。
+core 不依赖 IO 层；llm/db 依赖 core；tools 通过注入 ports 使用 db/retrieval/crypto；graph 编排上述模块；api/worker 装配。executor 调 handler，handler 不回调 graph/api。使用 AST/import-linter 检查分层与唯一 handler 调用点，不用简单 grep 作为安全证明。
 
 ## 2. 身份、资源与运行
 
@@ -79,6 +79,45 @@ CREATE TABLE sessions (
   title TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   FOREIGN KEY(project_id,user_id) REFERENCES project_members(project_id,user_id)
+);
+CREATE TABLE files (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id),
+  owner_id UUID NOT NULL REFERENCES users(id),
+  original_name TEXT NOT NULL, storage_ref TEXT NOT NULL UNIQUE,
+  content_hash TEXT NOT NULL, size_bytes BIGINT NOT NULL CHECK(size_bytes>=0),
+  media_type TEXT NOT NULL, version TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY(project_id,owner_id) REFERENCES project_members(project_id,user_id)
+);
+CREATE TABLE crypto_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id),
+  owner_id UUID NOT NULL REFERENCES users(id),
+  name TEXT NOT NULL, provider TEXT NOT NULL CHECK(provider IN ('openssl','gmssl')),
+  algorithm TEXT NOT NULL, usage JSONB NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('active','disabled','revoked')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY(project_id,owner_id) REFERENCES project_members(project_id,user_id)
+);
+CREATE TABLE key_versions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key_id UUID NOT NULL REFERENCES crypto_keys(id),
+  version INT NOT NULL CHECK(version>=1), encrypted_blob_ref TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL CHECK(status IN ('active','decrypt_only','disabled','revoked')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(key_id,version)
+);
+CREATE UNIQUE INDEX idx_key_one_active ON key_versions(key_id) WHERE status='active';
+CREATE TABLE certificates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  file_id UUID NOT NULL REFERENCES files(id),
+  key_version_id UUID REFERENCES key_versions(id),
+  fingerprint TEXT NOT NULL, subject JSONB NOT NULL, issuer JSONB NOT NULL,
+  serial TEXT NOT NULL, san JSONB NOT NULL,
+  not_before TIMESTAMPTZ NOT NULL, not_after TIMESTAMPTZ NOT NULL,
+  usages JSONB NOT NULL, parse_version TEXT NOT NULL,
+  CHECK(not_after>=not_before)
 );
 CREATE TABLE agent_runs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -132,6 +171,19 @@ CREATE TABLE actions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_actions_run ON actions(run_id,created_at);
+CREATE TABLE artifacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id),
+  owner_id UUID NOT NULL REFERENCES users(id),
+  action_id UUID NOT NULL REFERENCES actions(id),
+  input_file_id UUID REFERENCES files(id), key_version_id UUID REFERENCES key_versions(id),
+  kind TEXT NOT NULL CHECK(kind IN ('ciphertext','plaintext','signature','csr','certificate')),
+  storage_ref TEXT NOT NULL UNIQUE, content_hash TEXT NOT NULL,
+  size_bytes BIGINT NOT NULL CHECK(size_bytes>=0), format_version TEXT NOT NULL,
+  profile TEXT NOT NULL, metadata JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY(project_id,owner_id) REFERENCES project_members(project_id,user_id)
+);
 CREATE TABLE approvals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   action_id UUID NOT NULL REFERENCES actions(id),
@@ -219,11 +271,13 @@ CREATE TABLE eval_runs (
 
 Memory hash 使用规范化结构且包含类型，冲突更新加锁；语义去重不能仅靠唯一索引。source_snapshot 按隐私保留政策清理，不能以追溯为由永久保留已请求删除的个人内容。
 
+files保存授权输入；certificates保存解析字段而不预设信任结论；crypto_keys与key_versions保存用途和版本，encrypted_blob_ref仅引用受控加密材料。artifacts绑定具体action、文件与key version，下载重新鉴权。证书检查的clock/trust_store/hostname/purpose及分项结果保存在版本化action结果中。nonce分配和唯一性由密码服务的持久化机制保证，metadata中的nonce字段本身不构成防复用控制。跨项目/用户及action引用一致性由短事务校验，必要时增加复合FK。
+
 ### 3.1 数据库权限
 
 bootstrap_admin 仅初始化扩展与角色；migration_owner 拥有应用表，密钥只交迁移进程。app_user 仅有必要 CRUD，不可 UPDATE/DELETE/TRUNCATE audit_logs，也不是其 owner；query_reader 只 SELECT 经授权视图并设置默认事务只读；audit_writer 仅 INSERT audit_logs 和 USAGE sequence。app_user 读取审计也需获授权的视图。运行时不持有能切到 owner 的角色成员权限。
 
-role 密码由环境/secret 注入，不在 DDL 中固定 `'from-env'` 字符串。外部实验与 DB 事务无法整体原子提交，不能声称 exactly-once；幂等下游、执行账本、reconciliation 明确覆盖边界。
+role 密码由环境/secret 注入，不在 DDL 中固定 `'from-env'` 字符串。外部密码动作与 DB 事务无法整体原子提交，不能声称 exactly-once；幂等下游、执行账本、reconciliation 明确覆盖边界。
 
 迁移脚本对明确表名授权，不使用可能误含审计的`GRANT ALL ON ALL TABLES`。例如审计权限如下；角色先由bootstrap创建，应用不具备这些角色的管理权限：
 
@@ -282,11 +336,11 @@ class ToolSpec(BaseModel):
     handler: Callable[..., Awaitable[ToolResult[Any]]]
 ```
 
-字段运行时需要约束：timeout>0、retry>=0，max_retries>0 必须 idempotent=True 且由本地政策允许。read_only 不等于幂等（读操作也可能有费用/限额）；非幂等操作 max_retries=0。handler 的异常由 executor 捕获分类；取消不被吞掉；客户端超时不能被当作外部操作已停止。
+字段运行时需要约束：timeout>0、retry>=0，max_retries>0 必须 idempotent=True 且由本地政策允许。read_only 不等于幂等（读操作也可能有费用/限额）；所有非只读操作max_retries=0；动作重传通过账本返回已有结果，不靠自动重试写操作。handler 的异常由 executor 捕获分类；取消不被吞掉；客户端超时不能被当作外部操作已停止。
 
-canonical tools：calculator、get_current_project、search_knowledge、query_database、read_file、run_python、run_experiment、analyze_result、generate_statistics、list_files。MCP bridge 将 db.query_experiment 映射 query_database 等已批准能力；新工具本地登记风险/权限之前只能发现，不能执行。
+canonical tools：inspect_certificate、verify_certificate、digest_file、verify_signature、get_key_metadata、encrypt_file、decrypt_file、sign_file、rotate_key、create_csr、issue_test_certificate、search_knowledge、query_database。MCP bridge将domain.inspect_certificate映射inspect_certificate、db.query_metadata映射query_database；新工具本地登记风险/权限之前只能发现，不能执行。
 
-query_database 输入为固定 query_id + 结构化参数，禁止模型直接传原始 SQL。run_python 输入为 mode=template/template_id/inputs 或 mode=script/script，动态风险按规范化参数计算；任意 script 为 L3，不能凭工具名统一按 L1 自动执行。calculator AST 只允许明确运算，不调用 eval。
+query_database输入为固定query_id与结构化参数，查询只返回获授权的密码资源元数据和执行记录，禁止模型传原始SQL。密码工具输入使用file_id/certificate_id/key_id与固定profile；真实路径、key version和秘密在服务端解析。加解密、签名、轮换、CSR与测试签发须绑定审批；默认禁止私钥导出、销毁和系统信任修改。各工具输入输出见[业务工具集合](06-CRYPTO-AGENT-SCOPE.md#4-建议的最小工具集合)。
 
 执行器顺序：
 
@@ -333,7 +387,7 @@ POST /chat 返回/关联 run_id，支持 stream=false JSON 和 stream=true SSE�
 ```text
 id: 101
 event: approval_required
-data: {"schema_version":1,"event_id":101,"run_id":"<uuid>","timestamp":"2026-10-10T00:00:00Z","payload":{"approval_id":"<uuid>","action_id":"<uuid>","action_hash":"<sha256>","tool_id":"run_experiment","arguments":{"data_scale":"100MB"},"expires_at":"2026-10-10T00:15:00Z"}}
+data: {"schema_version":1,"event_id":101,"run_id":"<uuid>","timestamp":"2026-10-10T00:00:00Z","payload":{"approval_id":"<uuid>","action_id":"<uuid>","action_hash":"<sha256>","tool_id":"encrypt_file","arguments":{"file_id":"<uuid>","key_id":"<uuid>","profile":"aes-gcm-v1"},"expires_at":"2026-10-10T00:15:00Z"}}
 
 ```
 
@@ -357,9 +411,9 @@ VerifierReport={passed,checks,violations,unsupported_claim_rate?,duration_ms}，
 
 ## 8. 配置与持续检查
 
-`.env.example` 至少：APP_ENV、API_KEY_HEADER、OLLAMA_BASE_URL、模型名、LLM_THINK、LLM_NUM_CTX、LLM_TIMEOUT_S、DATABASE_URL(app_user)、QUERY_DATABASE_URL(query_reader)、AUDIT_DATABASE_URL(audit_writer)、MIGRATION_DATABASE_URL（仅迁移）、QDRANT_URL、项目空间/collection、可选 Redis/存储 URL、路径 roots、Sandbox launcher URL/限制、受信任 MCP endpoints、EVAL_CONCURRENCY=1。
+`.env.example` 至少：APP_ENV、API_KEY_HEADER、OLLAMA_BASE_URL、模型名、LLM_THINK、LLM_NUM_CTX、LLM_TIMEOUT_S、DATABASE_URL(app_user)、QUERY_DATABASE_URL(query_reader)、AUDIT_DATABASE_URL(audit_writer)、MIGRATION_DATABASE_URL（仅迁移）、QDRANT_URL、项目空间/collection、可选 Redis/存储 URL、路径roots、密码Provider/keystore配置、受信任 MCP endpoints、EVAL_CONCURRENCY=1。
 
-app API/worker 不加载 migration/bootstrap 密钥；不把完整 OLLAMA_* 环境或配置秘密写进日志。合法读取 roots 按用途声明 documents/datasets/scratch/scripts（scripts 只读受信任样例）；每次 still 校验项目 ACL，不把 root 目录存在当任意文件授权。
+app API/worker 不加载 migration/bootstrap 密钥；不把完整 OLLAMA_* 环境或配置秘密写进日志。存储roots按knowledge/业务上传/artifact/keystore分别声明；每次核对用户与项目ACL。keystore只供受控密码服务加载，不能作为通用读取root；明文和私钥不写入messages、State、Trace或工具结果。
 
 RetrievalConfig 包含 dense/sparse/backend/fusion/rrf_k/rerank/top_k/query_rewrite/filters，JSON 写入 agent_runs.runtime_config 和 eval_runs.config；prompt_version 只存 prompt 版本字符串。模型实际计量写 llm_calls。
 

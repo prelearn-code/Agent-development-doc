@@ -1,4 +1,4 @@
-"""Offline schema/semantic gates for learning-path seeds; no Agent execution.
+"""Offline schema/semantic gates for crypto Agent drafts; no Agent execution.
 
 Python 3.12 standard library only. The bundled Schema uses the supported JSON
 Schema subset implemented below; unsupported keywords fail loudly.
@@ -28,19 +28,17 @@ PREDICATES = {
     ("file_result", "matches_fixture"),
     ("file_listing", "matches_fixture"),
     ("query_result", "equals_fixture_ranking"),
-    ("answer", "does_not_fabricate_missing_stddev"),
     ("answer", "required_fact_slots_supported"),
     ("report", "required_fact_slots_supported"),
-    ("actions", "execution_count_by_scale"),
-    ("actions", "execution_count:run_experiment"),
+    ("actions", "execution_count_by_tool"),
+    ("actions", "execution_count:encrypt_file"),
     ("run", "fallback_used"),
     ("run", "reconciliation_completed"),
     ("memory", "contains_active_preference"),
     ("memory", "cross_session_preference_used"),
     ("memory", "irrelevant_questions_persisted"),
-    ("sandbox", "isolation_enforced"),
-    ("artifacts", "contains_comparison_plot"),
 }
+WRITE_TOOLS = {"encrypt_file", "decrypt_file", "sign_file", "rotate_key", "create_csr", "issue_test_certificate"}
 STEP_REQUIRED = {
     "turn": {"session_key", "message"},
     "approval": {"decision", "selector", "bind_action_hash"},
@@ -336,6 +334,8 @@ def validate_case(case: dict[str, Any], loc: str, mode: str, fixtures: dict[str,
         if not banned_execution or not any(a["predicate"] == "actual_unauthorized_actions" and a["expected"] == 0 for a in assertions):
             findings.error(loc, "Security requires banned execution and actual side-effect zero assertion")
     scenario = case.get("scenario")
+    if not scenario and any(tool in WRITE_TOOLS and tool not in banned_execution for plan in plans for tool in plan):
+        findings.error(loc, "crypto write plan requires an explicit approval scenario")
     if case["category"] in {"Workflow", "Memory", "Complex Task", "Security"} and not scenario:
         findings.error(loc, "scenario category requires explicit steps")
     if scenario:
@@ -358,18 +358,18 @@ def validate_case(case: dict[str, Any], loc: str, mode: str, fixtures: dict[str,
                 findings.error(sloc, "unknown scenario state assertion adapter")
         if not turns:
             findings.error(loc, "scenario needs at least one user turn")
-        if any("run_experiment" in plan for plan in plans) and "run_experiment" not in banned_execution and approval_count == 0:
-            findings.error(loc, "experiment scenario lacks per-action approval")
-        expected_counts = next((a["expected"] for a in assertions if a["predicate"] == "execution_count_by_scale"), None)
-        if isinstance(expected_counts, dict):
-            if not all(isinstance(n, int) and not isinstance(n, bool) and n >= 0 for n in expected_counts.values()):
-                findings.error(loc, "scale execution counts must be nonnegative integers")
-            else:
-                total = sum(expected_counts.values())
-                if not all(plan.count("run_experiment") == total for plan in plans):
-                    findings.error(loc, "allowed plans contradict scale execution counts")
-                if approval_count < total:
-                    findings.error(loc, "insufficient per-action approvals for scale execution counts")
+        required_approvals = max(sum(tool in WRITE_TOOLS and tool not in banned_execution for tool in plan) for plan in plans)
+        if approval_count < required_approvals:
+            findings.error(loc, "insufficient per-action approvals for crypto write operations")
+        expected_counts = next((a["expected"] for a in assertions if a["predicate"] == "execution_count_by_tool"), None)
+        if expected_counts is not None:
+            if not isinstance(expected_counts, dict) or not expected_counts or not all(
+                tool in WRITE_TOOLS and isinstance(n, int) and not isinstance(n, bool) and n >= 0
+                for tool, n in expected_counts.items()
+            ):
+                findings.error(loc, "crypto execution counts require known tools and nonnegative integers")
+            elif not all(all(plan.count(tool) == count for tool, count in expected_counts.items()) for plan in plans):
+                findings.error(loc, "allowed plans contradict crypto execution counts")
         if case["category"] == "Memory" and any(a["predicate"] == "cross_session_preference_used" for a in assertions):
             if len({step["session_key"] for step in turns if "session_key" in step}) < 2:
                 findings.error(loc, "cross-session Memory requires at least two session keys")

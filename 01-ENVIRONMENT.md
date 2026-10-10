@@ -1,8 +1,6 @@
 # 01 - 分阶段环境搭建
 
-> 2026-10-10 修订；同日按「全部在 Ubuntu 内实现」重写环境拓扑（§0）。
-> 硬件与工具链数值为 2026-10-10 在 Ubuntu 内实测，替换旧文档的估算值与 Windows 侧记录。
-> **安装命令不等于已验证完成**，每项须有实际验证输出。
+> 开发、构建、测试与全部服务都在 Ubuntu 内完成。安装命令是后续学习操作，完成状态必须有实际验证输出。
 
 ## 0. 决策：全部在 Ubuntu 内实现，Windows 只作浏览器客户端
 
@@ -13,11 +11,7 @@ Windows 不承担任何实现角色，只通过浏览器从网络访问前端页
 但它对项目而言就是**一台 Linux 主机**：所有进程、文件、容器、GPU 访问都在它内部完成。
 除「用浏览器打开页面」以外，本指南不包含任何 Windows 侧的实现步骤。
 
-这不是偏好，是 M1 的 sandbox 要求决定的。原验收文档要求隔离环境满足
-"无网络、无秘密、非 root、只读根文件系统、限制 CPU/内存/PID/输出、
-不挂载 Docker socket"，且**"不能降级为宿主机执行不可信代码"**。
-这些是 Linux namespace/cgroup 原语，Windows 侧没有对等替代 ——
-所以不仅 sandbox，整个实现栈都留在 Ubuntu 内最省事，也最接近 M6 的真实部署形态。
+本项目采用单台 Ubuntu 主机，减少跨主机配置，便于从开发环境逐步学习到部署。密码工具始终由受控适配层调用，应用进程、数据和库安装路径明确分开。
 
 实测依据：
 
@@ -25,7 +19,7 @@ Windows 不承担任何实现角色，只通过浏览器从网络访问前端页
 |---|---|---|
 | 发行版 | Ubuntu 22.04.5 LTS（WSL2） | 可用 |
 | Ubuntu 内 Docker | **原生 29.1.3**，`/var/run/docker.sock` | 无需 Docker Desktop |
-| Docker 能力 | `overlay2` + cgroup v2 + seccomp | sandbox 硬条件已满足 |
+| Docker 能力 | `overlay2` + cgroup v2 + seccomp | 可用于服务容器；应用隔离仍需实测 |
 | Ubuntu 内 GPU | `nvidia-smi` 可见 RTX 5060 Ti，驱动 591.86 | GPU 直通已生效 |
 | Ubuntu 内 Ollama | **0.32.15，systemd 服务 enabled 且运行中** | 已是 Ubuntu 服务 |
 | uv | `~/.local/bin/uv`，0.11.12 | 已装 |
@@ -54,20 +48,9 @@ Windows 不承担任何实现角色，只通过浏览器从网络访问前端页
 **不要**把实现仓库放到 `/mnt/c`、`/mnt/d` 这类 Windows 挂载点：它们走 9P 协议，
 venv、node_modules 这种大量小文件操作会慢数倍。实现仓库必须在 Ubuntu 的 ext4 上。
 
-### 0.2 为什么 Ollama 也在 Ubuntu 内
+### 0.2 Ollama 与应用的连接
 
-旧方案把 Ollama 留在 Windows 宿主，Ubuntu 侧用宿主 IP 跨网络访问，代价是：
-端口要监听 `0.0.0.0`、要开防火墙、宿主 IP 随 WSL 重建而变、多一层网络故障点。
-
-现在 Ollama 已作为 **Ubuntu 内的 systemd 服务**运行（`/usr/local/bin/ollama`，
-监听 `127.0.0.1:11434`），于是：
-
-- 应用与 Ollama 之间是**本机回环**，不经过任何跨系统网络，`localhost` 可用。
-- 宿主 IP 漂移问题消失，`.env` 不需要随环境改地址。
-- Ollama **不再需要对外监听**，攻击面反而比旧方案小。
-
-GPU 直通在 Ubuntu 内已实测可用，模型文件也在 Ubuntu 内
-（`/usr/share/ollama/.ollama/models`，当前 20 GB），迁移成本已经付过了。
+Ollama 使用 Ubuntu 内的 systemd 服务，应用连接 `http://127.0.0.1:11434`。模型服务不对浏览器或外部网络直接开放；容器访问宿主服务按第5节的实际网络路线配置。
 
 ### 0.3 环境改变的纪律
 
@@ -79,10 +62,10 @@ GPU 直通在 Ubuntu 内已实测可用，模型文件也在 Ubuntu 内
 | 阶段 | 必需 | 可后置 |
 |---|---|---|
 | Phase 0 | Git、Python 3.12、uv、Ollama、qwen3.5:4b | qwen3.5:9b、Docker、数据库 |
-| M1 | 首次运行不可信代码前完成 Docker Sandbox | GPU 直通容器 |
+| M1 | OpenSSL/GmSSL适配、选定密码接口、受控资源与超时 | 第二Provider高级能力 |
 | M2 | Ubuntu 内 Docker + compose 插件、PostgreSQL + pgvector、Alembic | Redis、MinIO |
 | M3 | Qdrant、bge-m3；reranker 后引入 | learned sparse |
-| M4~M6 | Graph checkpointer、需要时 Redis worker、对象存储、Node（前端） | WebSocket、GPU sandbox |
+| M4~M6 | Graph checkpointer、需要时 Redis worker、对象存储、Node（前端） | WebSocket、HSM/KMS |
 
 Ubuntu 内的应用访问 `localhost`；容器内部访问 postgres/qdrant/redis 等服务名。
 不要把服务名 URL 原样复制到 Ubuntu 宿主机，也不要把宿主机 URL 复制进容器。
@@ -114,7 +97,7 @@ M3 再加 qdrant-client/pymupdf/BM25/分词器，M4 加 mcp/langgraph/checkpoint
 
 ## 3. Ollama（Ubuntu 内 systemd 服务）
 
-Ollama 已安装并注册为系统服务，**不是** Windows 程序：
+Ollama作为Ubuntu内的系统服务运行，检查方式：
 
 ```bash
 # 状态与版本
@@ -169,15 +152,18 @@ sudo systemctl edit ollama
 Windows 侧**未安装也不需要** Docker Desktop。整个项目只有这一条路线。
 
 ```bash
-# 唯一缺口：compose 插件（实测 `docker compose` 仍是 unknown command）
-sudo apt update && sudo apt install -y docker-compose-plugin
+# 先检查 compose 插件，仅缺失时按官方 Ubuntu 安装说明补齐
+if ! docker compose version; then
+  sudo apt update
+  sudo apt install -y docker-compose-plugin
+fi
 docker version
 docker compose version
 docker run --rm hello-world
 ```
 
 优点：少一层转发，compose 行为与 Linux 服务器一致，M6 的"干净环境部署"验收更真实；
-`read_only`、`--network none`、PID/内存限制等 M1 sandbox 原语直接可用。
+服务容器可以配置只读挂载、网络范围与PID/内存限制；各项按实际服务需求验证。
 
 Docker daemon 的资源上限由 WSL 的 `.wslconfig` 控制。实测 Ubuntu 内可见
 RAM 15 GB / 20 线程（宿主 31.8 GB / 20 线程），容器上限不得超出这个可见范围。
@@ -301,83 +287,36 @@ python -c "import torch; assert torch.cuda.is_available(); x=torch.randn(256,256
 
 该一次性诊断命令之后必须把通过的依赖与源索引写入 pyproject/lock，防止下次 uv sync 替换 CUDA 构建。还要跑一对真实 reranker 输入；仅 `is_available()` 不足以验收。[PyTorch 2.7 Blackwell 支持](https://pytorch.org/blog/pytorch-2-7/)、[官方安装选择器](https://pytorch.org/get-started/locally/)
 
-## 7. Sandbox 与降级
+## 7. 密码 Provider 与资源边界
 
-不可信代码只能在已验收的隔离环境；无 Docker 时 run_python 暂仅开放受信任模板，不允许任意脚本。Sandbox 的非 root、只读、无网络、无秘密、限制资源、超时清理和受控输出在 M1 验收，M5 扩展攻击测试。
+OpenSSL/GmSSL 源码仓库与文档同级，运行时采用受控安装前缀或验证过的系统库。记录 CLI、Python 包和实际 C 后端版本，不依据源码目录存在认定能力已可用。
 
-GPU 不可用可用 CPU 4B 或 CPU reranker，明确标记后不能与 GPU baseline 混比。MinIO 可先用受控本地存储 adapter；Redis 尚未引入时只支持单进程执行，不声称具备持久化队列/多 worker 恢复。GPU 容器是选修。[Docker GPU 支持](https://docs.docker.com/desktop/features/gpu/)
+固定 API 或参数数组调用 Provider，限制输入大小、超时和输出。模型只提交获授权的 file_id/certificate_id/key_id；服务端解析真实位置，密钥与解密明文不进入模型。算法不支持时明确拒绝，不静默切换为其他模式。
 
-## 8. 环境记录
+安装与能力验证任务见 [Provider 入门练习](06-CRYPTO-AGENT-SCOPE.md#10-后续可以照着操作的-provider-入门练习)，加解密、签名、证书与密钥掌握标准见同文件第3、5、6节。
 
-保存 `environment.lock.json`：OS/内核/驱动/GPU、Python/uv/Ollama、package lock hash、容器 digest、模型 digest/量化、num_ctx/think/temperature/seed、并行度、embedding/rerank 部署方式、冷/热启动规则。环境改变必须建新实验，不修改旧结果。
+## 8. 环境记录与待验证项
 
-### 8.1 2026-10-10 实测快照（Phase 0 起始，均在 Ubuntu 内取得）
+### 8.1 项目环境记录
 
-| 项 | 实测值 |
-|---|---|
-| CPU / 线程 | i5-14600KF，`nproc` = 20 |
-| RAM（Ubuntu 可见） | 15 GiB（宿主 31.8 GB，WSL 限额） |
-| GPU | RTX 5060 Ti，16311 MiB；驱动 591.86 |
-| GPU 空闲占用 | 2622 MiB（桌面常驻），**可用约 13.4 GB** |
-| 内核 | 6.6.87.2-microsoft-standard-WSL2 |
-| 发行版 | Ubuntu 22.04.5 LTS，`/` 1007 GB，可用 750 GB |
-| 用户 | `zsw`（非 root） |
-| Ubuntu 地址 | `172.26.9.67/20`（eth0；WSL 重建后会变） |
-| Python（Ubuntu 系统） | 3.10.12（不够，用 uv 取 3.12） |
-| uv | `/home/zsw/.local/bin/uv`，0.11.12 |
-| Docker（Ubuntu 原生） | 29.1.3，`overlay2` + cgroup v2 + seccomp |
-| docker compose | **缺失**，需 `docker-compose-plugin` |
-| Ollama（Ubuntu systemd） | v0.32.15，**服务 enabled 且运行中**，`127.0.0.1:11434` |
-| Ollama 模型目录 | `/usr/share/ollama/.ollama/models`，20 GB |
-| Node / pnpm（Ubuntu） | v22.23.2 / 12.3.4 |
+以下记录来自2026年10月10日的只读检查，供Phase 0确定起点。开始学习时重新运行对应检查，记录当次版本与结果，不用记录表代替实际验收。
 
-### 8.2 模型现状与风险
+| 项目 | 已记录的状态 | 后续检查 |
+|---|---|---|
+| Ubuntu | Ubuntu 22.04.5 LTS，用户zsw | 当前发行版、用户、工作目录 |
+| Python | 系统3.10.12；项目venv为3.12.13 | 新终端解释器与依赖锁 |
+| Ollama | Ubuntu内服务，模型列表已有qwen3.5:4b | version、digest与真实请求 |
+| 模型配置 | `.env.example`为127.0.0.1:11434和qwen3.5:4b | 当前Settings与本地配置一致 |
+| OpenSSL CLI | 3.0.2 | 路径、实际版本、帮助与smoke |
+| Python密码后端 | 尚未验证 | cryptography后端版本与选定功能 |
+| GmSSL | 尚未验证 | C库、绑定、动态库加载与能力清单 |
+| 项目基础 | 已有core配置与模型骨架；检查时无uv.lock和工具/Loop测试 | 按P0任务补依赖锁和首个测试 |
+| Compose与应用运行 | 本轮未作运行验证 | 插件、迁移、服务readiness与应用smoke |
 
-| 模型 | family | 参数 | 体积 | 判断 |
-|---|---|---|---|---|
-| **`qwen3.5:4b`** | qwen35 | 4.2B | 3.31 GB | **计划 Controller**，Q4_K_M，**待拉取** |
-| `qwen3.5:9b` | qwen35 | 9.0B | 6.55 GB | 目标十一对照（同族同量化），M5 待拉取 |
-| `qwen3.5:27b` | qwen35 | 26.9B | 17.48 GB | 可选配置 C；超出可用显存，必然 offload |
-| `qwen3.8:27b-q4_K_M` | qwen35 | 27.3B | 16.52 GB | 与计划模型**不同版本**（3.8 ≠ 3.5） |
-| `qwen3.8-agent-32k` | qwen35 | 27.3B | 16.52 GB | 自定义微调，**非**对照基线 |
-| `qwen3-vl:4b` | qwen3vl | 4.4B | 3.07 GB | 旧独立视觉模型；`qwen3.5:4b` 已原生多模态，可淘汰 |
+### 8.2 模型与资源记录
 
-`qwen3.5:4b` 与 `qwen3.5:9b` **同族（qwen35）、同量化（Q4_K_M）、同 renderer/parser**，
-满足目标十一"同族同量化比较"的前提；两者合计约 9.9 GB，可共存于 750 GB 磁盘。
+Phase 0只需qwen3.5:4b；9B在M5比较前准备。Embedding到M3引入，reranker按消融需求准备，27B属于可选配置。每次实验保存实际model digest、推理配置、空闲/峰值显存、冷/热加载状态，下载体积不能直接当显存占用。
 
-**风险**：已装的 `qwen3.8` 系（16.52 GB）与计划的 `qwen3.5` 系**不同版本**，
-不能用于 [00-ROADMAP.md](00-ROADMAP.md) 目标十一的 4B vs 9B 对比结论。
-另外 `qwen3.5:27b`（17.48 GB）> 可用显存 13.4 GB，选它作可选配置 C 时必然 CPU offload，
-其延迟不可与 4B/9B 组直接并列，必须单独标注。
+### 8.3 环境验收记录方式
 
-### 8.3 Phase 0 起始快照的未完成项
-
-下列是起始记录，不是实时待办。当天后续只读核对见§8.5；学习开始时仍须重新运行验证。
-
-- [ ] 拉取 `qwen3.5:4b`（Phase 0 唯一必需模型）
-- [ ] Ubuntu 侧 `docker-compose-plugin`
-- [ ] `uv venv --python 3.12` + `uv sync --extra m1 --extra dev`
-- [ ] 一个通过的最小请求测试（Phase 0 的验收判据）
-
-> 已消除的旧缺口：Ollama CLI / 服务已在 Ubuntu 内就绪；不再需要 Windows 侧
-> `OLLAMA_HOST` 与防火墙配置；不再需要查找宿主 IP。
-
-### 8.4 应用仓库侧的同源记录
-
-实现仓库内有 `docs/environment.md`（同一份数据的可读版）与
-`scripts/selftest.py`（可执行契约）。**两处不一致时以本文件的实测表为准，
-并同步修正实现仓库**——不能只改一处。
-
-### 8.5 同日后续只读核对
-
-本次学习指南编写时只读核对Ubuntu，未实施应用代码或安装操作：
-
-- 文档仓库提交`55c759a`，实现仓库提交`242aa44`；实现仓库工作区干净。
-- 实现仓库`.env.example`已使用`http://127.0.0.1:11434`和`qwen3.5:4b`。
-- `.venv/bin/python`为3.12.13；系统Python仍为3.10.12。
-- `ollama list`已有`qwen3.5:4b`，短ID为`d8b0f5e9760c`。该短ID不替代实验记录中的完整digest。
-- OpenSSL CLI为3.0.2；Python库的OpenSSL后端版本需要后续单独核对。
-- 核对时未发现`uv.lock`、工具/Loop实现与`test_*.py`；已有venv或模型不等于Phase0已验收。
-- 本次未检查GmSSL安装、真实模型请求、compose、GPU推理与应用运行，不能据此勾选完成。
-
-后续任务以[逐步学习指南](05-UBUNTU-STEP-BY-STEP.md)的P0检查开始，密码适配路线见[业务范围](06-CRYPTO-AGENT-SCOPE.md)。上面的初始实测表保留为历史，不覆盖新实验的环境锁。
+实现仓库的`docs/environment.md`保存当次命令、输出、版本、未验证项和必要降级说明；`scripts/selftest.py`检查骨架与配置契约。二者与文档不一致时先核对实际环境，再同步修正。学习从 [P0环境检查](05-UBUNTU-STEP-BY-STEP.md#42-p0-01-检查已有环境) 开始。

@@ -29,7 +29,7 @@
 
 | 主题 | 先达到的停止条件 | 深入时机 |
 |---|---|---|
-| Python/async | 能处理输入错误与真正清理超时进程 | M1 Sandbox/多调用 |
+| Python/async | 能处理输入错误与真正清理超时进程 | M1 Provider/多调用 |
 | Ollama | 非流式报文正确、知道原生NDJSON | M1原生流与tool回传 |
 | HTTP/SSE | 理解空行分帧/UTF-8跨块/错误与断线 | M2重连、M6前端 |
 | SQL | 会迁移、事务、授权视图和JOIN | M2持久化、M4动作账本 |

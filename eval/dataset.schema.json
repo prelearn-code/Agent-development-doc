@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lpa:eval:dataset:2",
-  "title": "Local Professional Agent eval case v2",
+  "$id": "urn:crypto-agent:eval:v3",
+  "title": "Crypto Agent evaluation record v3",
   "type": "object",
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 2
+      "const": 3
     },
     "id": {
       "type": "string",
@@ -86,16 +86,19 @@
         "items": {
           "type": "string",
           "enum": [
-            "calculator",
-            "get_current_project",
+            "inspect_certificate",
+            "verify_certificate",
+            "digest_file",
+            "verify_signature",
+            "get_key_metadata",
+            "encrypt_file",
+            "decrypt_file",
+            "sign_file",
+            "rotate_key",
+            "create_csr",
+            "issue_test_certificate",
             "search_knowledge",
-            "query_database",
-            "read_file",
-            "run_python",
-            "run_experiment",
-            "analyze_result",
-            "generate_statistics",
-            "list_files"
+            "query_database"
           ]
         }
       }
@@ -108,16 +111,19 @@
           "tool_id": {
             "type": "string",
             "enum": [
-              "calculator",
-              "get_current_project",
+              "inspect_certificate",
+              "verify_certificate",
+              "digest_file",
+              "verify_signature",
+              "get_key_metadata",
+              "encrypt_file",
+              "decrypt_file",
+              "sign_file",
+              "rotate_key",
+              "create_csr",
+              "issue_test_certificate",
               "search_knowledge",
-              "query_database",
-              "read_file",
-              "run_python",
-              "run_experiment",
-              "analyze_result",
-              "generate_statistics",
-              "list_files"
+              "query_database"
             ]
           },
           "occurrence": {
@@ -141,8 +147,7 @@
       "enum": [
         "intent_knowledge",
         "intent_data",
-        "intent_compute",
-        "intent_experiment",
+        "intent_crypto",
         "intent_memory",
         "intent_workflow",
         "intent_security",
@@ -184,16 +189,19 @@
           "items": {
             "type": "string",
             "enum": [
-              "calculator",
-              "get_current_project",
+              "inspect_certificate",
+              "verify_certificate",
+              "digest_file",
+              "verify_signature",
+              "get_key_metadata",
+              "encrypt_file",
+              "decrypt_file",
+              "sign_file",
+              "rotate_key",
+              "create_csr",
+              "issue_test_certificate",
               "search_knowledge",
-              "query_database",
-              "read_file",
-              "run_python",
-              "run_experiment",
-              "analyze_result",
-              "generate_statistics",
-              "list_files"
+              "query_database"
             ]
           }
         },
@@ -202,16 +210,19 @@
           "items": {
             "type": "string",
             "enum": [
-              "calculator",
-              "get_current_project",
+              "inspect_certificate",
+              "verify_certificate",
+              "digest_file",
+              "verify_signature",
+              "get_key_metadata",
+              "encrypt_file",
+              "decrypt_file",
+              "sign_file",
+              "rotate_key",
+              "create_csr",
+              "issue_test_certificate",
               "search_knowledge",
-              "query_database",
-              "read_file",
-              "run_python",
-              "run_experiment",
-              "analyze_result",
-              "generate_statistics",
-              "list_files"
+              "query_database"
             ]
           }
         },
@@ -220,16 +231,19 @@
           "items": {
             "type": "string",
             "enum": [
-              "calculator",
-              "get_current_project",
+              "inspect_certificate",
+              "verify_certificate",
+              "digest_file",
+              "verify_signature",
+              "get_key_metadata",
+              "encrypt_file",
+              "decrypt_file",
+              "sign_file",
+              "rotate_key",
+              "create_csr",
+              "issue_test_certificate",
               "search_knowledge",
-              "query_database",
-              "read_file",
-              "run_python",
-              "run_experiment",
-              "analyze_result",
-              "generate_statistics",
-              "list_files"
+              "query_database"
             ]
           }
         },
@@ -238,16 +252,19 @@
           "items": {
             "type": "string",
             "enum": [
-              "calculator",
-              "get_current_project",
+              "inspect_certificate",
+              "verify_certificate",
+              "digest_file",
+              "verify_signature",
+              "get_key_metadata",
+              "encrypt_file",
+              "decrypt_file",
+              "sign_file",
+              "rotate_key",
+              "create_csr",
+              "issue_test_certificate",
               "search_knowledge",
-              "query_database",
-              "read_file",
-              "run_python",
-              "run_experiment",
-              "analyze_result",
-              "generate_statistics",
-              "list_files"
+              "query_database"
             ]
           }
         },

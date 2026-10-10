@@ -22,7 +22,18 @@ class DatasetGateTests(unittest.TestCase):
                 cls.seeds[case["id"]] = case
 
     def ready_case(self, identifier="tool-004"):
-        case = copy.deepcopy(self.seeds[identifier])
+        if identifier == "sec-003":
+            # Structural gate fixture only: no Agent attack or application test.
+            case = copy.deepcopy(self.seeds["tool-001"])
+            case.update(category="Security", gold_intent="intent_security")
+            case["allowed_tool_plans"] = [[], ["inspect_certificate"]]
+            case["gold_calls"] = []
+            case["success_criteria"]["must_call_tools"] = []
+            case["success_criteria"]["must_not_execute_tools"] = ["inspect_certificate"]
+            case["success_criteria"]["state_assertions"] = [{"subject":"resources", "predicate":"actual_unauthorized_actions", "expected":0}]
+            case["scenario"] = {"user_key":"user_a", "steps":[{"type":"turn", "session_key":"s1", "message":"contract fixture"}], "cleanup":"delete_namespace"}
+        else:
+            case = copy.deepcopy(self.seeds[identifier])
         # Test-only review metadata exercises the gate; does not approve a seed.
         case["status"] = "ready"
         case["provenance"].update(reviewer_kind="human", verified_by="test-fixture-reviewer", reviewed_at="2026-10-10")
@@ -32,7 +43,13 @@ class DatasetGateTests(unittest.TestCase):
         findings = validator.Findings()
         validator.validate_schema(case, self.schema, "case", findings)
         if not findings.errors:
-            validator.validate_case(case, "case", mode, fixtures or self.fixtures, manifest, findings)
+            selected_fixtures = fixtures
+            if selected_fixtures is None:
+                # Test-only resolved mocks exercise other gates without claiming real resources exist.
+                selected_fixtures = copy.deepcopy(self.fixtures)
+                for fixture in selected_fixtures.values():
+                    fixture["resolved"] = True
+            validator.validate_case(case, "case", mode, selected_fixtures, manifest, findings)
         return findings
 
     def test_numeric_tool_case_can_be_frozen_after_review(self):
@@ -40,17 +57,17 @@ class DatasetGateTests(unittest.TestCase):
         self.assertEqual(findings.errors, [])
 
     def test_no_answer_rag_is_valid_draft_with_empty_gold(self):
-        findings = self.inspect(copy.deepcopy(self.seeds["rag-059"]), mode="draft")
+        findings = self.inspect(copy.deepcopy(self.seeds["rag-008"]), mode="draft")
         self.assertEqual(findings.errors, [])
         self.assertTrue(findings.warnings)
 
     def test_frozen_rag_cannot_skip_corpus_or_fact_slots(self):
         case = self.ready_case("rag-001")
         case["gold_chunk_ids"] = ["actual-chunk"]
-        case["gold_doc_ids"] = ["doc_algo"]
+        case["gold_doc_ids"] = ["doc_crypto_scope"]
         case["gold_pages"] = [1]
         fixtures = copy.deepcopy(self.fixtures)
-        fixtures["domain_corpus_draft"]["resolved"] = True
+        fixtures["crypto_corpus_draft"]["resolved"] = True
         findings = self.inspect(case, fixtures=fixtures)
         self.assertTrue(any("gold_fact_slots" in error for error in findings.errors))
         self.assertTrue(any("evidence manifest" in error for error in findings.errors))
@@ -58,32 +75,32 @@ class DatasetGateTests(unittest.TestCase):
     def test_valid_rag_requires_matching_fact_and_locator(self):
         case = self.ready_case("rag-001")
         case["gold_chunk_ids"] = ["actual-chunk"]
-        case["gold_doc_ids"] = ["doc_algo"]
+        case["gold_doc_ids"] = ["doc_crypto_scope"]
         case["gold_pages"] = [1]
-        case["gold_fact_slots"] = [{"slot_id":"integrity", "description":"Fixture fact: detect corrupted stored blocks", "evidence_chunk_ids":["actual-chunk"]}]
+        case["gold_fact_slots"] = [{"slot_id":"parse_scope", "description":"Fixture fact: parsing does not establish chain trust", "evidence_chunk_ids":["actual-chunk"]}]
         fixtures = copy.deepcopy(self.fixtures)
-        fixtures["domain_corpus_draft"]["resolved"] = True
-        manifest = {"actual-chunk":{"doc_id":"doc_algo", "locator":{"page_start":1,"page_end":1}}}
+        fixtures["crypto_corpus_draft"]["resolved"] = True
+        manifest = {"actual-chunk":{"doc_id":"doc_crypto_scope", "locator":{"page_start":1,"page_end":1}}}
         self.assertEqual(self.inspect(case, manifest=manifest, fixtures=fixtures).errors, [])
         case["gold_pages"] = [2]
         self.assertTrue(any("gold page" in error for error in self.inspect(case, manifest=manifest, fixtures=fixtures).errors))
 
     def test_denied_attempt_is_not_confused_with_execution(self):
         case = self.ready_case("sec-003")
-        self.assertEqual(case["allowed_tool_plans"], [[], ["read_file"]])
-        self.assertIn("read_file", case["success_criteria"]["must_not_execute_tools"])
+        self.assertEqual(case["allowed_tool_plans"], [[], ["inspect_certificate"]])
+        self.assertIn("inspect_certificate", case["success_criteria"]["must_not_execute_tools"])
         self.assertEqual(self.inspect(case).errors, [])
 
-    def test_condition_branch_does_not_allow_unwanted_experiment(self):
+    def test_condition_branch_does_not_allow_unwanted_encryption(self):
         case = self.ready_case("wf-003")
         self.assertEqual(self.inspect(case).errors, [])
-        case["allowed_tool_plans"].append(["query_database", "run_experiment"])
+        case["allowed_tool_plans"].append(["get_key_metadata", "encrypt_file"])
         self.assertTrue(any("must_not_call" in error for error in self.inspect(case).errors))
 
     def test_alternative_plan_cannot_be_rejected_by_must_call(self):
         case = self.ready_case("tool-003")
         self.assertEqual(self.inspect(case).errors, [])
-        case["success_criteria"]["must_call_tools"].append("calculator")
+        case["success_criteria"]["must_call_tools"].append("digest_file")
         self.assertTrue(any("alternative plan" in error for error in self.inspect(case).errors))
 
     def test_memory_scenario_needs_two_sessions(self):
@@ -98,11 +115,20 @@ class DatasetGateTests(unittest.TestCase):
         next(step for step in case["scenario"]["steps"] if step["type"] == "approval")["bind_action_hash"] = False
         self.assertTrue(any("action hash" in error for error in self.inspect(case).errors))
 
-    def test_three_scale_experiment_has_three_calls_and_approvals(self):
+    def test_three_file_encryption_has_three_calls_and_approvals(self):
         case = copy.deepcopy(self.seeds["tool-011"])
         self.assertEqual(self.inspect(case, mode="draft").errors, [])
         case["scenario"]["steps"] = [step for step in case["scenario"]["steps"] if not (step["type"] == "approval" and step["selector"].endswith(":3"))]
         self.assertTrue(any("insufficient per-action" in error for error in self.inspect(case, mode="draft").errors))
+
+    def test_unresolved_crypto_fixture_cannot_be_frozen(self):
+        case = self.ready_case("wf-005")
+        self.assertTrue(any("unresolved fixture" in error for error in self.inspect(case, fixtures=self.fixtures).errors))
+
+    def test_crypto_write_without_approval_scenario_is_rejected(self):
+        case = self.ready_case("wf-005")
+        del case["scenario"]
+        self.assertTrue(any("approval scenario" in error for error in self.inspect(case).errors))
 
     def test_zero_citations_alone_is_not_a_test(self):
         case = self.ready_case()

@@ -15,7 +15,7 @@
 
 - [ ] 目标1：Pydantic ToolResult与schema一致，公开证书解析/授权摘要有独立对照；固定provider入口与资源ID解析。
 - [ ] 空结果成功；unknown tool/参数/输出大小检查；密码材料不回模型，受控加解密有往返与认证失败证据。
-- [ ] calculator/read_file/fixture查询可作通用练习；run_python选修，模型脚本执行前Docker Sandbox硬条件全部验收。
+- [ ] 固定Provider API/CLI参数，不开放任意脚本或shell；输入/输出、超时与资源范围受控。
 - [ ] 超时取消确实kill/wait/清理；所有工具走统一入口、拒绝也审计。
 - [ ] 目标2：初版手写Loop，非流式后原生NDJSON，不混用SSE/delta/tool_call_id。
 - [ ] 单步/多步/多调用/失败回传、deadline/token/step预算、重复调用熔断。
@@ -45,7 +45,7 @@
 
 ## M4（80h）
 
-- [ ] 目标7：ToolSpec与本地policy、动态脚本风险、输出schema、幂等retry与预算。
+- [ ] 目标7：ToolSpec与本地policy、密码操作风险、输出schema、幂等retry与预算。
 - [ ] ≥50工具用例允许多解，gold_calls按occurrence表达多次调用，单位SI明确。
 - [ ] 未授权/参数错误/取消/失败均审计；MCP注解不可自授权。
 - [ ] 密码写动作/敏感解密审批绑定规范参数、资源/策略版本；轮换、CSR或测试签发有实际状态断言。

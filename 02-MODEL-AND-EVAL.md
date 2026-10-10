@@ -20,7 +20,7 @@
 
 16GB 应监控桌面/其他进程、权重、KV cache 和 PyTorch 开销，不能将下载大小当占用。OLLAMA_MAX_LOADED_MODELS=1 只限制 Ollama，自行启动的 reranker 仍会占 GPU。单槽下实时 embed/rewrite/controller 会换模，延迟计入生产端到端；检索-only 预计算 query embeddings 是独立实验，不能声称代表在线延迟。
 
-## 2. RAG 指标
+## 2. 操作知识库 RAG 指标
 
 令 Q+ 为有可回答且完整 gold 的问题，Q- 为明确无答案问题。R_K(q) 为 top-K 去重结果，G(q) 为 gold 集合；K、候选级/最终级与 corpus/chunk 版本均写报告。
 
@@ -55,7 +55,7 @@ Faithfulness = 被证据支持的原子事实断言/全部原子事实断言；A
 
 必须分开 attempt、denied 与 executed：模型提出路径越界调用而执行器拒绝，可以安全通过；真实读取越权文件一定失败。intent_security 标签只是数据标签，不授权也不阻止动作。Unauthorized Action Rate 必须为0且逐例无副作用；有限样本的0不证明系统没有任何安全漏洞。
 
-gold_calls 按 tool_id + occurrence 绑定参数；多解可给参数约束而非全文字符串。gold_args 单 dict 不能表达多次同工具调用，因此已迁移到 gold_calls。字段缺失按 schema defaults 规范化，不能把任意字符串都小写或把所有数值字符串强制转类型。单位固定 SI：MB=1,000,000 bytes、GB=1,000,000,000 bytes；MiB/GiB 为二进制，禁止把100MB等同104857600 bytes。
+gold_calls 按 tool_id + occurrence 绑定参数；多解可给参数约束而非全文字符串。同一工具多次调用分别用occurrence表达。字段缺失按 schema defaults 规范化，不能把任意字符串都小写或把所有数值字符串强制转类型。单位固定 SI：MB=1,000,000 bytes、GB=1,000,000,000 bytes；MiB/GiB 为二进制，文件上限1 MiB对应1,048,576 bytes。
 
 Task Success 使用 success_criteria：must_call_tools 为 proposed attempt 层；must_not_call_tools 禁止提出；must_execute_tools/must_not_execute_tools 为实际执行层；allowed_tool_plans 为计划层；final_answer_all_of 与 any_of 明确区分逻辑；expected_values 绑定 subject/metric/unit/数值与容差；state_assertions 验证资源/审批/恢复/Memory 状态。
 
@@ -73,7 +73,7 @@ token 从每次 llm_calls 实际返回的 prompt/completion 计数聚合，区�
 
 ## 5. 数据与实验冻结
 
-最终目标 180 条：Intent20/RAG30/Tool25/Database20/Workflow20/Memory15/Security25/Complex Task25。预算不足可先冻结100条，必须列各类样本与缺口。种子40+25+60可在划分/去重后复用，不把重复问题算新增独立样本。
+最终目标 180 条：Intent20/RAG30/Tool25/Database20/Workflow20/Memory15/Security25/Complex Task25。预算不足可先冻结100条，必须列各类样本与缺口。本项目起步草稿用于示范记录结构，正式题库从证书、摘要、加解密、密钥与操作知识中逐项审定；复用问题记录ID，不重复计为独立新样本。
 
 合成问题仅产生 draft；逐条审定 gold/关键成功条件并记录 verified_by/reviewed_at。20% 抽检只决定整批是否需要返工，不能把剩余80%标为“human verified”。近义变体、同一 source/template/场景组整体进入同一 split，避免 dev/test 泄漏。
 

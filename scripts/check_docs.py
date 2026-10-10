@@ -50,15 +50,41 @@ if 'runtime_config JSONB NOT NULL' not in ddl:
     failures.append('DDL: missing config snapshot column')
 
 fixtures = json.loads((root/'eval/fixtures.json').read_text(encoding='utf-8'))
-experiments = next(f['data']['experiments'] for f in fixtures['fixtures'] if f['id']=='experiments_sample')
-expected_bytes = {'100MB':100_000_000,'500MB':500_000_000,'1GB':1_000_000_000}
-for row in experiments:
-    if row['data_bytes'] != expected_bytes[row['data_scale']]:
-        failures.append('fixture: inconsistent SI bytes')
-lookup = {(r['data_scale'],r['metric']):r['value'] for r in experiments}
-if abs(lookup['500MB','audit_time']-lookup['100MB','audit_time']-7.13)>1e-9:
-    failures.append('fixture: time difference wrong')
-print(f'Checked {len(markdown)} Markdown files, {links} local links, {python_blocks} Python examples, {json_blocks} JSON examples, {len(tables)} DDL table dependencies, {len(experiments)} SI-unit fixture rows.')
+fixture_map = {item['id']:item for item in fixtures['fixtures']}
+files = fixture_map['small_files_sample']['data']['files']
+for item in files:
+    if len(item['content_utf8'].encode('utf-8')) != item['size_bytes']:
+        failures.append('fixture: UTF-8 file size mismatch')
+keys = fixture_map['key_metadata_sample']['data']['keys']
+if any('material' in item or 'private_key' in item for item in keys):
+    failures.append('fixture: key metadata contains secret material')
+if not fixture_map['certificate_draft']['resolved'] and fixture_map['certificate_draft']['data']['path'] is not None:
+    failures.append('fixture: unresolved certificate unexpectedly has a live path')
+schema = json.loads((root/'eval/dataset.schema.json').read_text(encoding='utf-8'))
+tools = set(schema['properties']['allowed_tool_plans']['items']['items']['enum'])
+canonical = re.search(r'canonical tools：(.*?)。', ddl_text).group(1)
+if set(canonical.split('、')) != tools:
+    failures.append('schema: canonical tools differ from project engineering contract')
+for name in ('files','crypto_keys','key_versions','certificates','artifacts'):
+    if name not in tables:
+        failures.append(f'DDL: missing crypto resource table {name}')
+for name in ('05-UBUNTU-STEP-BY-STEP.md','06-CRYPTO-AGENT-SCOPE.md'):
+    content = (root/name).read_text(encoding='utf-8')
+    expected_count = 17 if name.startswith('05') else 6
+    if content.count('**技术点掌握程度标准**') != expected_count:
+        failures.append(f'{name}: mastery table coverage mismatch')
+    in_code = False
+    widths = []
+    for line in content.splitlines()+['']:
+        if line.startswith('```'):
+            in_code = not in_code
+        if not in_code and line.startswith('|'):
+            widths.append(len(re.split(r'(?<!\\)\|',line))-2)
+        elif widths:
+            if len(set(widths)) != 1:
+                failures.append(f'{name}: inconsistent table columns')
+            widths = []
+print(f'Checked {len(markdown)} Markdown files, {links} local links, {python_blocks} Python examples, {json_blocks} JSON examples, {len(tables)} DDL table dependencies, {len(files)} synthetic file sizes, {len(tools)} canonical tools and 23 mastery tables.')
 for failure in failures:print('ERROR',failure)
 if failures:raise SystemExit(1)
 print('PASS static documentation checks (does not execute PostgreSQL or GPU code).')
