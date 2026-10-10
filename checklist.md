@@ -54,7 +54,7 @@
 - [ ] 目标9：State只存有限摘要/版本化引用，AsyncPostgresSaver迁移setup与锁定graph版本。
 - [ ] 动态interrupt用Command(resume)，同pending action恢复不重新改参数。
 - [ ] approvals绑定hash/身份/有效期/单次消费；重复/并发approve与拒绝可测。
-- [ ] actions账本、幂等键、lease/fencing、执行中/执行后崩溃核对；unknown不自动重跑。
+- [ ] actions账本、幂等键、执行前/中/后崩溃核对；unknown不自动重跑；引入独立worker时补lease/fencing与双worker竞争。
 - [ ] 重连恢复待审批，显式cancel，副作用只执行一次或进入明确unknown，m4-done。
 
 ## M5（90h）
@@ -82,6 +82,15 @@
 - [ ] 综合项目（15h）：上传/只读检查/key元数据/加解密审批/执行/轮换与版本验证/UI审计全链路，补证书验证或测试CSR/签发。
 - [ ] 故障恢复不静默重复密码动作，版本化来源/审计完整，冻结scenario回归，m6-done。
 - [ ] **交付验收**：Windows 浏览器从网络打开前端地址即可复现全链路，Windows 侧零安装。
+
+## 文档配套与完整交付
+
+- [ ] 00每目标表逐行有状态与证据，解释/实现/排错/证据分别检查，未运行不标通过。
+- [ ] 07自绘只读/审批/知识三条序列与信任边界图，State/安全边界本人确定。
+- [ ] 08接口错误/幂等/分页/鉴权与OpenAPI一致，全栈联调表逐场景通过。
+- [ ] 09干净目录复现、DB/文件/index/keystore/checkpoint备份恢复与unknown核对有证据。
+- [ ] 四仓库同级并独立固定版本；源码/prefix分离，密码仓库不成为文档子目录。
+- [ ] A–J毕业矩阵正常/失败/个人能力齐全；选修不适用有理由，首版缺口未冒充完整版。
 
 ## 阶段共同检查
 

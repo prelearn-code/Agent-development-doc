@@ -413,3 +413,17 @@ print(digest.digest().hex())
 `crypto` 组创建后，M2 使用 `uv sync --extra m1 --extra m2 --extra crypto --extra dev`；M3 加 `--extra m3`，M4 再加 `--extra m4`。只有真正做 reranker 才增加 `ml`。锁文件形成后复现加 `--frozen`，不同阶段选择的 extras 写进运行说明。
 
 完成这些练习后，才开始自己实现统一 provider adapter。第一轮只封装证书解析和摘要；输入/输出/异常稳定后再接 execute_tool 和模型。
+
+
+## 11. 密码工具服务于Agent学习
+
+本文件六张密码技术表规定业务正确性；主课程的17张技术表见[00](00-ROADMAP.md)。密码封装先固定少量profile和≤1MiB教学文件，重点练Agent输入校验、选工具、资源授权、版本、固定审批、结果验证与恢复；不将路线扩展为算法实现课程。
+
+| 学习业务 | 必须体现的Agent能力 | 深入密码部分的时机 |
+|---|---|---|
+| 摘要/公开证书解析 | schema、直接对照、工具反馈、Trace | 业务结果已可验证后再读算法原理 |
+| 加解密/签名 | 固定profile、审批、秘密边界、artifact/版本、Verifier | 本路线掌握库正确使用；大文件协议后置 |
+| 密钥轮换 | 状态账本、幂等、旧版本策略、失败核对 | HSM/KMS、生产轮换合规另立专题 |
+| 证书验证/测试签发 | 检查分项、信任来源、审批、当前版本 | 完整CA/吊销服务/生产信任后置 |
+
+端点和页面查[08](08-API-AND-WEB.md)，恢复/材料备份查[09](09-DELIVERY-AND-ACCEPTANCE.md)。官方GmSSL能力以锁定版本实际验证为准，发现库缺能力应明确disabled/unavailable，不能改用另一算法还沿用原profile名称。

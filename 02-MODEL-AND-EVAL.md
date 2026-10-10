@@ -119,3 +119,19 @@ CI 普通任务跑校验、mock 场景和确定性安全测试；本地 GPU 任�
 3. Verifier：已知错误与已知正确双集，覆盖实体错绑、单位、派生值、引用版本/定位/支持，TPR/FPR附样本量和漏报误报。
 
 报告模板：问题、固定项与变量、环境与hash、适用样本数、结果/区间、失败用例、限制和下一步。按证据回答改动是否有益，不要求复杂配置必须胜过 baseline。
+
+
+## 9. 学习阶段与变更回归门禁
+
+| 改动 | 最少重新检查 | 必须记录的影响 |
+|---|---|---|
+| Provider/profile/key version | 已知摘要/验签、AEAD往返认证失败、版本/产物 | 实际库能力、容器格式、nonce策略、审批失效 |
+| Tool schema/描述/registry | 合同与相关工具题，审批/hash/权限 | canonical映射、occurrence与多解计划 |
+| Model/prompt/router/context | 同frozen题配对compare与各配置重复 | 固定变量、逐case回归、质量/延迟/token/显存 |
+| Parse/chunk/embed/retrieval | 定位/权限/更新发布与四组检索 | manifest变化；重新审定受影响gold后新版本baseline |
+| Graph/State/checkpoint | 版本兼容、审批全分支、三处崩溃 | unknown核对与旧任务恢复，worker条件性测试 |
+| Verifier | 正确/错误双集、引用与事实绑定 | TPR/FPR、n、漏报误报，不降低正确gold |
+| Memory | 来源、改口/删除、跨用户/无关输入 | 事务去重与索引清理 |
+| API/Web/部署 | 幂等、鉴权、SSE刷新断线、下载/恢复 | 同Run实际状态、网络/配置变化 |
+
+个人学习通过标准见[00](00-ROADMAP.md)，全链路与证据清单见[09](09-DELIVERY-AND-ACCEPTANCE.md)。先有baseline再确定质量/性能阈值；示例百分点或耗时不是未实测的硬保证。实际越权必须0，任何相关确定性安全回归失败阻止发布。修数据错误需要证据、版本变更和重跑原配置，不覆盖旧报告；test不可用于反复调阈值。

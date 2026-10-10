@@ -1,66 +1,54 @@
-# OpenSSL/GmSSL 全栈 AI Agent 学习项目
+# 密码工具 Agent 全栈学习项目
 
-本项目通过简单封装 OpenSSL 和 GmSSL，逐步实现一个能够检查证书、计算摘要、审批加解密、管理密钥版本并展示执行过程的 AI Agent。主要学习目标是 Agent 全栈开发：Python 工具、手写 Loop、API、数据库、RAG、MCP、工作流、Memory、Verifier、评测、前端和部署。
+以简单封装OpenSSL/GmSSL为业务主线，学习完整Agent开发：Python工具、手写Loop、API/数据库、RAG、MCP、持久工作流、Memory、Verifier、评测、安全、React前端与Ubuntu交付。模型负责理解与提议，确定性服务负责权限、审批、密码结果与证据。**主目标是能独立开发和排错Agent，密码库提供可验收的工具动作。**
 
-文档与应用分仓管理：本仓库保存学习指南、工程契约和评测草稿；应用在 `Agent-development-code` 中实现。所有开发、构建、测试与服务运行都在 Ubuntu 内完成，Windows 浏览器用于访问最终页面。
+这是文档仓库，应用在同级`Agent-development-code`实施。所有开发、构建、测试与服务运行都在Ubuntu，Windows只用浏览器访问最终页面。文档中的规划能力、命令和接口不代表当前应用已实现；真实完成状态由运行证据确认。
 
-## 1. 从哪里开始
+## 1. 现在从哪里开始
 
-1. 阅读 [逐步学习指南](05-UBUNTU-STEP-BY-STEP.md) 第 1–4 节，了解首版闭环和 Phase 0 任务。
-2. 完成 P0 01–04：环境检查、依赖锁、一次真实模型请求、首个确定性测试。
-3. 用公开测试证书和非敏感小文件，直接验证证书解析和文件摘要，再接入手写 Agent Loop。
-4. 按阶段增加 API、数据库、知识检索、审批恢复、评测和前端，每次保留真实运行证据。
+1. 读[00主学习路径](00-ROADMAP.md)第1–4节，了解掌握标准、能力全图、预算与Phase 0。
+2. 用[05逐步指南](05-UBUNTU-STEP-BY-STEP.md)第1–4节完成P0 01–04；不一次安装所有服务/模型。
+3. 先用公开测试证书/非敏感小文件直接做解析和摘要，按06选Provider；工具直接通过后才接手写Loop。
+4. 每个目标按00的“解释、独立实现、排错、证据”逐行验收，05给具体任务；阶段出口与checklist同步。
+5. API/DB以后沿同一业务扩展知识、MCP、审批/恢复、验证、评测、网页与部署。
 
-各阶段的技术介绍含掌握标准表：必须独立做到什么、验证练习与证据、可以后置的深入内容。学习时逐行记录“待学 / 在做 / 已验证”，以能解释、能实现、能排错判断掌握程度。
+每周20–25h，基础450h；含返工余量建议520–565h，约21–29周。详细16目标与工时以00为准，前两周按真实耗时调整。首版可以裁剪选修和规模，但不能裁授权/隔离/审计/动作恢复，也不能称完整版毕业。
 
-## 2. 阶段与预算
+## 2. 文档分工与阅读时机
 
-| 阶段 | 学习目标 | 基础工时 | 累计 | 阶段成果 |
-|---|---|---:|---:|---|
-| Phase 0 | Ubuntu、环境、HTTP、配置、测试 | 20h | 20h | 真实模型请求、首个测试、版本记录 |
-| M1 | 1 Python 工具 / 2 LLM 与 Loop | 70h | 90h | 密码工具、手写 Loop、工具调用 Trace |
-| M2 | 3 FastAPI / 4 PostgreSQL | 60h | 150h | API、SSE、资源元数据、持久化审计 |
-| M3 | 5 基础 RAG / 6 检索实验 | 70h | 220h | 操作知识库、引用、四组消融 |
-| M4 | 7 执行器 / 8 MCP / 9 LangGraph | 80h | 300h | 固定动作审批、密钥版本、恢复 |
-| M5 | 10 Memory / 11 小模型 / 12 Verifier / 13 Eval / 14 Security | 90h | 390h | 模型对比、事实核对、场景与安全回归 |
-| M6 | 15 前端 / 16 部署 / 综合交付 | 60h | 450h | 网页业务闭环、Ubuntu 部署与恢复演练 |
+| 文档 | 唯一职责 | 什么时候读 |
+|---|---|---|
+| [00-ROADMAP.md](00-ROADMAP.md) | 主课程：Phase 0+16目标、必修深度、顺序、独立练习、退出条件 | 第一份；每个目标开始和验收 |
+| [05-UBUNTU-STEP-BY-STEP.md](05-UBUNTU-STEP-BY-STEP.md) | 日常任务、操作步骤、阶段练习与排错 | 跟着当前目标逐项执行 |
+| [01-ENVIRONMENT.md](01-ENVIRONMENT.md) | Ubuntu环境、依赖、Provider与网络路线、历史快照 | Phase 0与服务首次引入 |
+| [03-LEARNING-ORDER.md](03-LEARNING-ORDER.md) | 每周节奏、按需补基础与复盘 | 安排本周与遇到阻塞 |
+| [04-AI-ASSISTED-DEV.md](04-AI-ASSISTED-DEV.md) | AI协作边界与个人理解验收 | 请求AI帮助前 |
+| [06-CRYPTO-AGENT-SCOPE.md](06-CRYPTO-AGENT-SCOPE.md) | 密码业务、Provider路线、工具与秘密/版本限制 | 工具封装与审批设计 |
+| [07-AGENT-SYSTEM-DESIGN.md](07-AGENT-SYSTEM-DESIGN.md) | 运行时、Context/Router/Loop/Graph、设计问题 | 目标2、7–12 |
+| [repo-structure.md](repo-structure.md) | 分层、DDL、工具/审批/状态/SSE/证据工程契约 | 改schema或模块边界时 |
+| [08-API-AND-WEB.md](08-API-AND-WEB.md) | HTTP端点、错误、幂等/SSE、前端状态与联调 | 目标3/4/15 |
+| [02-MODEL-AND-EVAL.md](02-MODEL-AND-EVAL.md) | 模型配置、指标/分母、冻结、消融与回归规则 | 收集问题及目标6/11–14 |
+| [eval/README.md](eval/README.md) | 评测草稿、fixture/证据标注、draft/frozen操作 | 逐题审定与Runner实施 |
+| [09-DELIVERY-AND-ACCEPTANCE.md](09-DELIVERY-AND-ACCEPTANCE.md) | Ubuntu复现、备份恢复、证据卡与毕业矩阵 | 每阶段收证据及M6 |
+| [checklist.md](checklist.md) | 未勾选进度清单与签收记录 | 目标/阶段退出时 |
 
-按每周 **20–25 小时**安排，含集成返工余量建议预留 **520–565 小时，约 21–29 周**。前两周用真实耗时调整排期；具体任务与掌握标准见逐步指南。首版裁剪范围见 [业务范围](06-CRYPTO-AGENT-SCOPE.md) 第 2 节。
+发生冲突时按职责处理：学习完成标准以00为准；执行任务在05；业务范围以06；DDL、canonical工具/状态/事件字段以结构文档；HTTP与页面以08；指标与实验以02，数据字段以[dataset.schema.json](eval/dataset.schema.json)。实际代码与规划的差异先登记迁移，不静默改变约定；修改时同步关联文档/registry/schema与评测版本。
 
-## 3. 阅读与执行顺序
-
-| 文档 | 用途 |
-|---|---|
-| [05-UBUNTU-STEP-BY-STEP.md](05-UBUNTU-STEP-BY-STEP.md) | 日常执行入口：任务顺序、学习内容、掌握标准、验收和排错 |
-| [06-CRYPTO-AGENT-SCOPE.md](06-CRYPTO-AGENT-SCOPE.md) | 密码业务范围、Provider 路线、密钥与证书标准、入门练习 |
-| [00-ROADMAP.md](00-ROADMAP.md) | 16 个目标、阶段依赖、工时与毕业要求 |
-| [01-ENVIRONMENT.md](01-ENVIRONMENT.md) | Ubuntu、服务网络、依赖与环境记录 |
-| [repo-structure.md](repo-structure.md) | 分层、密码资源元数据、工具、审批、SSE 与证据契约 |
-| [02-MODEL-AND-EVAL.md](02-MODEL-AND-EVAL.md) | 模型配置、指标、消融、冻结与实验比较 |
-| [03-LEARNING-ORDER.md](03-LEARNING-ORDER.md) | 每周节奏和按需学习方法 |
-| [04-AI-ASSISTED-DEV.md](04-AI-ASSISTED-DEV.md) | AI 协作分工与独立能力验收 |
-| [checklist.md](checklist.md) | 阶段进度与交付检查 |
-| [eval/README.md](eval/README.md) | 密码项目评测草稿、标注与冻结操作 |
-| [eval/dataset.schema.json](eval/dataset.schema.json) | 评测字段、当前工具枚举 |
-| [eval/validate_dataset.py](eval/validate_dataset.py) | 离线结构、审批、证据与冻结门禁 |
-
-工程接口以结构文档为准，业务限制以范围文档为准，指标以模型与评测文档为准。涉及接口修改时同步相应文档、应用 registry 和评测记录。
-
-## 4. 仓库位置
+## 3. 四仓库同级
 
 ```text
 /home/zsw/work/agent_development/
-├── Agent-development-doc/     学习文档
-├── Agent-development-code/    应用实现
-├── openssl/                   OpenSSL 官方源码
-└── GmSSL/                     GmSSL 官方源码
+├── Agent-development-doc/      学习文档
+├── Agent-development-code/     应用实现
+├── openssl/                    OpenSSL官方源码
+└── GmSSL/                      GmSSL官方C源码
 ```
 
-四个仓库共用同一父目录，彼此同级，目录名区分大小写。GmSSL-Python 如需单独源码，也使用同级 `GmSSL-Python/`。各仓库独立固定 commit/tag；源码目录与安装前缀分开，构建使用受控前缀。应用使用 Ubuntu 文件系统中的工作目录。
+**两个密码学仓库与本项目文档目录处于同一级，共用一个父目录**，不是文档或应用的子目录。每仓库独立固定commit/tag，源码与安装prefix分开；可选绑定源码使用同级GmSSL-Python。实际Ubuntu用户名可替换，目录大小写与层级保持一致。
 
-应用仓库的目录与同步操作见 [docs/GIT-SYNC.md](../Agent-development-code/docs/GIT-SYNC.md)，协作规则见 [AGENTS.md](../Agent-development-code/AGENTS.md)。
+应用协作规则见[AGENTS.md](../Agent-development-code/AGENTS.md)，目录/同步见[docs/GIT-SYNC.md](../Agent-development-code/docs/GIT-SYNC.md)。本仓库不自动克隆/构建这两个库，不放真实密钥、私钥、解密产物或模型权重。
 
-## 5. 文档与评测检查
+## 4. 文档与评测检查
 
 ```bash
 cd /home/zsw/work/agent_development/Agent-development-doc
@@ -69,4 +57,6 @@ python3 eval/validate_dataset.py --all --mode draft
 python3 -m unittest discover -s eval -p 'test_*.py' -v
 ```
 
-评测目录提供本项目的少量起步草稿和空证据模板。草稿尚未审定，待准备的文件、证书、密钥与语料标为 unresolved；结构校验通过只说明格式与契约一致。正式报告必须使用逐条人工审核、真实 fixture 与证据齐全的 frozen 数据集。完整学习指标仍要求 RAG ≥50、Tool ≥50，以及 100–180 条综合用例。
+检查覆盖本地链接、代码示例语法、表格、主路径17目标表与既有领域表、DDL依赖、canonical工具和评测格式。**这些是文档检查，不执行数据库、模型或业务工具，不证明应用已经完成。**
+
+评测起步包目前24条未审定草稿，部分fixture与证据仍待准备；draft通过只说明结构有效。完整版要求人工审定与真实证据的frozen数据、RAG≥50、Tool≥50和100–180综合用例，复用case ID不能重复计数。完成状态由学习者依据真实运行逐项填写，不由文档编写自动勾选。

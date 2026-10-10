@@ -320,3 +320,18 @@ Phase 0只需qwen3.5:4b；9B在M5比较前准备。Embedding到M3引入，rerank
 ### 8.3 环境验收记录方式
 
 实现仓库的`docs/environment.md`保存当次命令、输出、版本、未验证项和必要降级说明；`scripts/selftest.py`检查骨架与配置契约。二者与文档不一致时先核对实际环境，再同步修正。学习从 [P0环境检查](05-UBUNTU-STEP-BY-STEP.md#42-p0-01-检查已有环境) 开始。
+
+
+## 7. 按阶段验证环境，不以安装代替掌握
+
+| 阶段 | 必需新增或核对 | 真实通过条件 |
+|---|---|---|
+| Phase 0 | Ubuntu/Git/Python/uv/Ollama与4B、配置/测试 | 新终端真实请求与首测，不只是版本命令 |
+| M1 | 选定OpenSSL/GmSSL适配能力 | 库/CLI路径固定、真实摘要/证书样本、超时清理 |
+| M2 | Docker/PostgreSQL与API | 迁移、角色、volume重启、浏览器/API连通 |
+| M3 | Qdrant/embed，可选独立reranker环境 | 维度/授权过滤、定位、失败不发布active |
+| M4 | MCP/graph saver，可选worker/队列 | 恢复原审批；有worker才验收并发领取 |
+| M5 | 9B、固定Judge与实验环境 | 版本与计量齐全，正式结果用frozen，不把CPU冒充GPU |
+| M6 | Web构建/Compose/备份 | 清洁目录复现、网络边界、数据/材料恢复 |
+
+记录的历史版本不是永久要求，也不是最新版本声明。对已存在服务先验证再决定升级；升级依赖、模型、Provider或协议后按02回归规则重新验证。运行配置/健康/备份依赖见[09](09-DELIVERY-AND-ACCEPTANCE.md)，每项个人掌握深度见[00](00-ROADMAP.md)。

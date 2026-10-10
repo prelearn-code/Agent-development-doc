@@ -269,7 +269,7 @@ CREATE TABLE eval_runs (
 
 这是实体拆分后的参考方案，项目不是“必须恰好 9 张表”。跨表一致性（run 的 user 与 session owner、tool_call 的 action/step 与 run 一致、approval_hash 与 action 一致）在 repository 短事务中校验，并用集成测试；需数据库强保证时增加复合唯一键/FK 或触发器。删除策略默认 RESTRICT，删除用户/项目先走显式清理/匿名化流程；audit 不 FK 到可删除实体。session/project 归属不因 UUID 难猜而省略权限检查。
 
-Memory hash 使用规范化结构且包含类型，冲突更新加锁；语义去重不能仅靠唯一索引。source_snapshot 按隐私保留政策清理，不能以追溯为由永久保留已请求删除的个人内容。
+Memory hash 使用规范化结构且包含类型，冲突更新加锁；API纠正/删除用expected_content_hash做乐观并发检查，锁定有效记录后失效旧值并返回新ID/hash，不把hash当权限；语义去重不能仅靠唯一索引。source_snapshot 按隐私保留政策清理，不能以追溯为由永久保留已请求删除的个人内容。
 
 files保存授权输入；certificates保存解析字段而不预设信任结论；crypto_keys与key_versions保存用途和版本，encrypted_blob_ref仅引用受控加密材料。artifacts绑定具体action、文件与key version，下载重新鉴权。证书检查的clock/trust_store/hostname/purpose及分项结果保存在版本化action结果中。nonce分配和唯一性由密码服务的持久化机制保证，metadata中的nonce字段本身不构成防复用控制。跨项目/用户及action引用一致性由短事务校验，必要时增加复合FK。
 
@@ -297,6 +297,8 @@ ALTER ROLE query_reader SET statement_timeout = '5s';
 q1 Run→actions→tool_calls 列调用；q2 包含 failed/timeout/unknown；q3 查 canonical_arguments；q4 llm_calls 按 purpose 汇总模型/digest/token；q5 messages 按 sequence_no 排序；q6 失败排行参数化 start_time/end_time。结果空是有效结果，unknown 独立显示而不是计作成功。
 
 ## 4. 工具与唯一执行入口
+
+下面是**目标契约示意**，不是当前应用已实现的类型。当前骨架字段与迁移见§4.1；规范工具名/风险/审批/执行次序必须保持一致，不能只因类型样例存在就标完成。
 
 ```python
 from enum import IntEnum
@@ -353,6 +355,22 @@ query_database输入为固定query_id与结构化参数，查询只返回获授�
 
 日志脱敏、截断与结果 blob 引用统一处理。MCP server 的 readOnlyHint 等注解不直接成为本地授权。[MCP tools 规范](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
 
+### 4.1 当前代码与目标契约的映射
+
+以2026-10-10读取的Ubuntu应用骨架为起点。开发时重新核对实际模型与registry，不把本表当永久版本事实。目标升级需要合同测试、事件/持久化兼容与数据版本同步，本文不修改应用。
+
+| 当前骨架 | 目标语义/字段 | 学习者的迁移任务 |
+|---|---|---|
+| ToolSpec.name | canonical tool_id | M1保留name作为注册键；M4明确适配并锁定canonical映射，避免两个名称漂移 |
+| ToolSpec.retry | max_retries与幂等策略 | 当前非只读retry=0保持；增加idempotent与本地许可，不能从read_only自动推断可重试 |
+| 尚无独立version字段 | tool version | 初期registry配置记录版本，M4写入Spec/action/approval/runtime快照，变更审批必须失效 |
+| ToolResult.citations，当前Citation为文档型 | 通用evidence_refs及知识Citation | M1按现有citations验证；M3/M4设计文档证据与工具结果引用转换，不把artifact伪造为文档页码 |
+| ToolCall.tool_name/call_id | canonical tool_id与内部call关联 | ModelClient/bridge显式转换，原生tool_name与应用内部ID分别保存 |
+| source/mcp_server | 工具来源/受信任Server关联 | 保留追踪，本地policy不信任外部annotation |
+| 当前RiskLevel枚举 | 0–4本地风险语义 | 数值/名字差异显式映射，敏感解密与写动作按06政策，不因名字自动降级 |
+
+新增idempotent、version或evidence_refs前先定义读取旧记录的行为；迁移后的输出与评测schema必须一致。样例的泛型Pydantic ToolResult是共同方向，不要求为M1先改动全部成熟契约。没有通用证据字段时明确只支持文档引用范围，不能伪称已覆盖全部Verifier来源。
+
 ## 5. 审批与动作恢复
 
 审批请求展示规范参数、影响资源和实际版本。POST /runs/{id}/approve body：approval_id、action_hash、decision=approved/rejected；审批者身份来自鉴权。校验权限、有效期、pending 状态、未消费、action 未变。重复请求返回原决定；并发批准与拒绝只有一个成功。审批只授权特定动作，不能授权后续模型新提议。
@@ -377,6 +395,8 @@ worker 在短事务 CAS claim，增加 fencing_token；结果只接受当前 own
 Graph 动态审批使用 `Command(resume=decision)`，interrupt 节点重跑，之前不能创建无幂等检查的副作用。checkpointer 与动作账本分工：前者恢复控制流，后者处理副作用。版本不兼容的旧 checkpoint 明确拒绝或迁移，不直接用新 graph 执行。[LangGraph interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)
 
 ## 6. API 与 SSE
+
+本节定义事件与状态的工程合同；完整HTTP端点/错误/前端恢复见[08](08-API-AND-WEB.md)，运行职责见[07](07-AGENT-SYSTEM-DESIGN.md)。接口表是目标设计，应用完成需OpenAPI与真实合同验收。
 
 POST /chat 返回/关联 run_id，支持 stream=false JSON 和 stream=true SSE。GET /runs/{id} 返回 status、steps、actions、approval、final_answer、verifier；GET /runs/{id}/events?after={event_id} 支持恢复事件，POST /runs/{id}/cancel 显式取消。文件/会话/Memory/事件全部鉴权与资源校验。
 
@@ -410,6 +430,8 @@ Claim={claim_id,subject,metric,value,unit,source_refs,derivation?}。派生量 d
 VerifierReport={passed,checks,violations,unsupported_claim_rate?,duration_ms}，violations 含 check/type/severity/detail/found/expected?。未知正确答案时 expected 可以缺省，但必须给修复方向，不能编造期望值。必需项 skipped/unknown 不能当 pass；unsupported_claim_rate 无事实断言时 N/A。failed 后可限次重写或输出明确未验证结果，不能展示为已验证。
 
 ## 8. 配置与持续检查
+
+干净目录复现、服务依赖、备份/keystore恢复与毕业证据见[09](09-DELIVERY-AND-ACCEPTANCE.md)。本文件DDL为参考设计，文档静态检查不等于PostgreSQL实际迁移与权限已验收。
 
 `.env.example` 至少：APP_ENV、API_KEY_HEADER、OLLAMA_BASE_URL、模型名、LLM_THINK、LLM_NUM_CTX、LLM_TIMEOUT_S、DATABASE_URL(app_user)、QUERY_DATABASE_URL(query_reader)、AUDIT_DATABASE_URL(audit_writer)、MIGRATION_DATABASE_URL（仅迁移）、QDRANT_URL、项目空间/collection、可选 Redis/存储 URL、路径roots、密码Provider/keystore配置、受信任 MCP endpoints、EVAL_CONCURRENCY=1。
 

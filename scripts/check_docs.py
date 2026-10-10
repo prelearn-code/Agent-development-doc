@@ -68,9 +68,9 @@ if set(canonical.split('、')) != tools:
 for name in ('files','crypto_keys','key_versions','certificates','artifacts'):
     if name not in tables:
         failures.append(f'DDL: missing crypto resource table {name}')
-for name in ('05-UBUNTU-STEP-BY-STEP.md','06-CRYPTO-AGENT-SCOPE.md'):
+mastery_counts = {'00-ROADMAP.md':17, '05-UBUNTU-STEP-BY-STEP.md':17, '06-CRYPTO-AGENT-SCOPE.md':6}
+for name, expected_count in mastery_counts.items():
     content = (root/name).read_text(encoding='utf-8')
-    expected_count = 17 if name.startswith('05') else 6
     if content.count('**技术点掌握程度标准**') != expected_count:
         failures.append(f'{name}: mastery table coverage mismatch')
     in_code = False
@@ -84,7 +84,51 @@ for name in ('05-UBUNTU-STEP-BY-STEP.md','06-CRYPTO-AGENT-SCOPE.md'):
             if len(set(widths)) != 1:
                 failures.append(f'{name}: inconsistent table columns')
             widths = []
-print(f'Checked {len(markdown)} Markdown files, {links} local links, {python_blocks} Python examples, {json_blocks} JSON examples, {len(tables)} DDL table dependencies, {len(files)} synthetic file sizes, {len(tools)} canonical tools and 23 mastery tables.')
+
+# 所有Markdown表格都检查列宽，不只检查操作指南。
+for path in markdown:
+    in_code = False
+    widths = []
+    for line in path.read_text(encoding='utf-8').splitlines()+['']:
+        if line.startswith('```'):
+            in_code = not in_code
+        if not in_code and line.startswith('|'):
+            widths.append(len(re.split(r'(?<!\\)\|',line))-2)
+        elif widths:
+            if len(set(widths)) != 1:
+                failures.append(f'{path.name}: inconsistent table columns')
+            widths = []
+
+
+for path in markdown:
+    if re.search(r'^\|[-: |]+\|\n\s*\n\|',path.read_text(encoding='utf-8'),re.M):
+        failures.append(f'{path.name}: table body detached by blank line')
+
+roadmap = (root/'00-ROADMAP.md').read_text(encoding='utf-8')
+goal_sections = re.findall(r'^### (目标\d+|Phase 0)：[^\n]+\n(.*?)(?=^### |^## |\Z)', roadmap, re.M|re.S)
+if {title for title, _ in goal_sections} != {'Phase 0'} | {f'目标{i}' for i in range(1,17)}:
+    failures.append('roadmap: Phase 0 or one of 16 goals missing/duplicated')
+if len(goal_sections) != 17:
+    failures.append('roadmap: unexpected number of goal sections')
+for title, content in goal_sections:
+    for required in ('**进入条件**', '**Agent目标**', '**技术点掌握程度标准**',
+                     '**学习与实现顺序**', '**必须独立回答**', '**独立练习**', '**退出条件**'):
+        if required not in content:
+            failures.append(f'roadmap: {title} missing {required}')
+    if '| 技术点 | 能解释 | 独立做到 | 排错与边界 | 验收证据 | 后置内容 |' not in content:
+        failures.append(f'roadmap: {title} missing mastery dimensions')
+
+    block = re.search(r'\| 技术点 \| 能解释 .*?\n\|[-|]+\|\n((?:\|[^\n]*\n)+)',content)
+    if not block or len(block.group(1).splitlines()) < 4:
+        failures.append(f'roadmap: {title} mastery body is missing or detached from header')
+
+for name in ('07-AGENT-SYSTEM-DESIGN.md','08-API-AND-WEB.md','09-DELIVERY-AND-ACCEPTANCE.md'):
+    if not (root/name).is_file():
+        failures.append(f'missing supporting guide {name}')
+    if name not in (root/'README.md').read_text(encoding='utf-8'):
+        failures.append(f'README: guide not indexed {name}')
+
+print(f'Checked {len(markdown)} Markdown files, {links} local links, {python_blocks} Python examples, {json_blocks} JSON examples, {len(tables)} DDL table dependencies, {len(files)} synthetic file sizes, {len(tools)} canonical tools and {sum(mastery_counts.values())} mastery tables.')
 for failure in failures:print('ERROR',failure)
 if failures:raise SystemExit(1)
 print('PASS static documentation checks (does not execute PostgreSQL or GPU code).')
