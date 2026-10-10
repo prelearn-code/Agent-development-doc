@@ -5,7 +5,7 @@
 ## 1. 目录与依赖
 
 ```text
-local-professional-agent/
+Agent-development-code/
   pyproject.toml / uv.lock / .env.example / tasks.ps1
   infra/compose.yml / migrations/ / dockerfiles/
   src/lpa/

@@ -27,10 +27,10 @@
 ### 0.1 仓库必须放在 WSL 的 ext4 上
 
 `/mnt/d/...` 走 9P 协议，venv、node_modules 这类大量小文件操作会慢数倍。
-仓库路径用 `~/projects/local-professional-agent`，**不要**放 `/mnt/d`。
+仓库路径用 `~/projects/Agent-development-code`，**不要**放 `/mnt/d`。
 
-指南包是静态 Markdown，留在 `D:\work\local-agent-learning-path` 即可，
-从 WSL 按 `/mnt/d/work/local-agent-learning-path` 读取（只读不影响性能）。
+指南包是静态 Markdown，留在 `D:\work\Agent-development-doc` 即可，
+从 WSL 按 `/mnt/d/work/Agent-development-doc` 读取（只读不影响性能）。
 
 ### 0.2 为什么 Ollama 留在 Windows
 
@@ -60,8 +60,8 @@ GPU 直通已实测可用，这条退路是通的，但要重新拉模型并重�
 
 ## 2. Python 与目录
 
-按 §0 的决策：指南留在 `D:\work\local-agent-learning-path`（静态文档，Windows 侧编辑即可），
-应用建在 **WSL 内** `~/projects/local-professional-agent`。命令从应用根目录运行。
+按 §0 的决策：指南留在 `D:\work\Agent-development-doc`（静态文档，Windows 侧编辑即可），
+应用建在 **WSL 内** `~/projects/Agent-development-code`。命令从应用根目录运行。
 
 **WSL 系统自带 Python 3.10.12，不满足项目的 3.12 要求。用 uv 提供，不要 `apt install`**
 （Ubuntu 22.04 默认源没有 3.12，加 deadsnakes PPA 会污染系统环境）：

@@ -2,7 +2,7 @@
 
 > 修订日期：2026-10-10。目标：在本地硬件上独立实现、解释并验证一个有证据、可恢复、受权限约束的 Agent 系统。
 
-本包是学习与工程设计文档，包含评测种子和离线校验工具；应用代码将在独立的 `D:\work\local-professional-agent` 仓库实现。引用的《Agent 全栈开发学习目标与成果验收文档》原件未随本包提供，因此原章节编号仅保留为对照，不能声称已经核对原件全部要求。
+本包是学习与工程设计文档，包含评测种子和离线校验工具；应用代码将在独立的 `D:\work\Agent-development-code` 仓库实现。引用的《Agent 全栈开发学习目标与成果验收文档》原件未随本包提供，因此原章节编号仅保留为对照，不能声称已经核对原件全部要求。
 
 ## 1. 设计原则
 
@@ -69,13 +69,13 @@ python3 scripts/check_docs.py
 
 ## 5. 实现仓库与同步
 
-应用实现建在**独立仓库** `local-professional-agent`，按 §0 的 WSL 决策放在
-`~/projects/local-professional-agent`（WSL ext4，**不要**放 `/mnt/d`）。
+应用实现建在**独立仓库** `Agent-development-code`，按 §0 的 WSL 决策放在
+`~/projects/Agent-development-code`（WSL ext4，**不要**放 `/mnt/d`）。
 
-两个仓库必须**同级摆放**，否则本文档里的 `../local-agent-learning-path/` 相对链接会断。
+两个仓库必须**同级摆放**，否则本文档里的 `../Agent-development-doc/` 相对链接会断。
 
 同步方式、目录约定与新机器部署步骤见实现仓库的
-[docs/GIT-SYNC.md](../local-professional-agent/docs/GIT-SYNC.md)。
+[docs/GIT-SYNC.md](../Agent-development-code/docs/GIT-SYNC.md)。
 
 实现仓库已就绪的部分：分层骨架、`packages/core` 契约（`ToolResult`/`ToolSpec`/`RiskLevel`/`Policy`）、
 `pyproject.toml` 的分里程碑依赖分组、`.env.example`、`AGENTS.md`（AI 协作红线），
