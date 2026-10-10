@@ -1,6 +1,9 @@
-# Local Professional Agent 学习路径
+# Agent Development Doc —— Local Professional Agent 学习路径
 
 > 修订日期：2026-10-10。目标：在本地硬件上独立实现、解释并验证一个有证据、可恢复、受权限约束的 Agent 系统。
+>
+> 仓库更名记录：`local-agent-learning-path` → `Agent-development-doc`（2026-10-10）。
+> 配套实现仓库：`Agent-development-code`（原 `local-professional-agent`）。
 
 本包是学习与工程设计文档，包含评测种子和离线校验工具；应用代码将在独立的 `D:\work\Agent-development-code` 仓库实现。引用的《Agent 全栈开发学习目标与成果验收文档》原件未随本包提供，因此原章节编号仅保留为对照，不能声称已经核对原件全部要求。
 
