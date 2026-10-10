@@ -72,7 +72,7 @@ GPU 直通在 Ubuntu 内已实测可用，模型文件也在 Ubuntu 内
 
 | 阶段 | 必需 | 可后置 |
 |---|---|---|
-| Phase 0 | Git、Python 3.12、uv、Ollama、qwen3:4b | 8B/14B、Docker、数据库 |
+| Phase 0 | Git、Python 3.12、uv、Ollama、qwen3.5:4b | qwen3.5:9b、Docker、数据库 |
 | M1 | 首次运行不可信代码前完成 Docker Sandbox | GPU 直通容器 |
 | M2 | Ubuntu 内 Docker + compose 插件、PostgreSQL + pgvector、Alembic | Redis、MinIO |
 | M3 | Qdrant、bge-m3；reranker 后引入 | learned sparse |
@@ -118,14 +118,19 @@ curl -s http://127.0.0.1:11434/api/version
 
 # 模型
 ollama list
-ollama pull qwen3:4b                 # Phase 0 唯一必需模型（待拉取）
-ollama run qwen3:4b "用一句话说明工具调用"
+ollama pull qwen3.5:4b               # Phase 0 唯一必需模型（待拉取）
+ollama run qwen3.5:4b "用一句话说明工具调用"
 ollama ps
 ```
 
 模型文件在 `/usr/share/ollama/.ollama/models`（当前 20 GB）。M3 拉 bge-m3，
-M5 按需拉 8B/14B。模型名可变，实验记录实际 digest、量化、template、上下文参数；
+M5 按需拉 qwen3.5:9b。模型名可变，实验记录实际 digest、量化、template、上下文参数；
 权重体积不能直接当推理峰值显存。
+
+`qwen3.5:4b` 要求 Ollama ≥ 0.30.0（本机 0.32.15 满足）。它是**统一多模态**模型
+（文本 + 图像输入，256K 上下文，原生支持 tools 与 thinking），因此不需要再单独部署
+视觉模型。出厂采样参数为 `temperature=1 / top_p=0.95 / top_k=20 / presence_penalty=1.5`，
+必须原样记录，并与消融实验的配置分开报告。
 
 Ollama 的服务参数通过 systemd override 设置，不用 Windows 环境变量：
 
@@ -324,16 +329,24 @@ GPU 不可用可用 CPU 4B 或 CPU reranker，明确标记后不能与 GPU basel
 
 | 模型 | family | 参数 | 体积 | 判断 |
 |---|---|---|---|---|
-| `qwen3.8:27b-q4_K_M` | qwen35 | 27.3B | 16.52 GB | 与计划模型**不同代** |
+| **`qwen3.5:4b`** | qwen35 | 4.2B | 3.31 GB | **计划 Controller**，Q4_K_M，**待拉取** |
+| `qwen3.5:9b` | qwen35 | 9.0B | 6.55 GB | 目标十一对照（同族同量化），M5 待拉取 |
+| `qwen3.5:27b` | qwen35 | 26.9B | 17.48 GB | 可选配置 C；超出可用显存，必然 offload |
+| `qwen3.8:27b-q4_K_M` | qwen35 | 27.3B | 16.52 GB | 与计划模型**不同版本**（3.8 ≠ 3.5） |
 | `qwen3.8-agent-32k` | qwen35 | 27.3B | 16.52 GB | 自定义微调，**非**对照基线 |
-| `qwen3-vl:4b` | qwen3vl | 4.4B | 3.07 GB | 视觉模型，不能当 Controller |
+| `qwen3-vl:4b` | qwen3vl | 4.4B | 3.07 GB | 旧独立视觉模型；`qwen3.5:4b` 已原生多模态，可淘汰 |
 
-**风险**：27B 权重 16.52 GB > 可用显存 13.4 GB，必然 CPU offload；
-且与 `qwen3:4b/8b` 不同代，**不能用于 [00-ROADMAP.md](00-ROADMAP.md) 目标十一的 4B vs 8B 对比结论**。
+`qwen3.5:4b` 与 `qwen3.5:9b` **同族（qwen35）、同量化（Q4_K_M）、同 renderer/parser**，
+满足目标十一"同族同量化比较"的前提；两者合计约 9.9 GB，可共存于 750 GB 磁盘。
+
+**风险**：已装的 `qwen3.8` 系（16.52 GB）与计划的 `qwen3.5` 系**不同版本**，
+不能用于 [00-ROADMAP.md](00-ROADMAP.md) 目标十一的 4B vs 9B 对比结论。
+另外 `qwen3.5:27b`（17.48 GB）> 可用显存 13.4 GB，选它作可选配置 C 时必然 CPU offload，
+其延迟不可与 4B/9B 组直接并列，必须单独标注。
 
 ### 8.3 Phase 0 未完成项
 
-- [ ] 拉取 `qwen3:4b`（Phase 0 唯一必需模型）
+- [ ] 拉取 `qwen3.5:4b`（Phase 0 唯一必需模型）
 - [ ] Ubuntu 侧 `docker-compose-plugin`
 - [ ] `uv venv --python 3.12` + `uv sync --extra m1 --extra dev`
 - [ ] 一个通过的最小请求测试（Phase 0 的验收判据）

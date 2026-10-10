@@ -6,13 +6,15 @@
 
 | 角色 | 起点 | 规则 |
 |---|---|---|
-| Controller A/B | qwen3:4b / qwen3:8b，同量化 | 比参数量时同模型族、template、思考模式 |
-| 可选 C | qwen3:14b | 16GB 需实测上下文与共驻留预算 |
+| Controller A/B | qwen3.5:4b / qwen3.5:9b，同量化(Q4_K_M) | 比参数量时同模型族、template、思考模式；Qwen3.5 无 8B 尺寸，对照取最近的 9B |
+| 可选 C | qwen3.5:27b | 17.48 GB > 可用显存 13.4 GB，必然 offload，延迟不可与 A/B 并列 |
 | Embedding | bge-m3 dense，1024维 | Ollama 仅 dense；learned sparse 另用 FlagEmbedding |
 | Reranker | BAAI/bge-reranker-v2-m3 | CPU/GPU 是独立环境变量，必须记录 |
 | Judge | 固定的独立模型/版本 | 所有待比较 Controller 使用相同 Judge |
 
-比较 4B/8B 时可用固定 14B Judge；比较包含 14B 时另选全组统一 Judge 或人工审定，不能只给 14B 组换一个 8B Judge。不同模型并不能保证无偏；Judge 随机顺序、隐藏系统身份，与人工标注校准。不能假设大模型 Judge 一定偏严。
+比较 4B/9B 时可用固定 27B Judge；比较包含 27B 时另选全组统一 Judge 或人工审定，不能只给 27B 组换一个 9B Judge。不同模型并不能保证无偏；Judge 随机顺序、隐藏系统身份，与人工标注校准。不能假设大模型 Judge 一定偏严。
+
+`qwen3.5:4b` 出厂采样参数为 `temperature=1 / top_p=0.95 / top_k=20 / presence_penalty=1.5`；下面的固定值属于**实验配置**，必须与出厂参数分开记录，不能混为一谈。
 
 固定 think=false、temperature=0（或明确预设）、seed（若后端支持）、num_ctx、输出预算、MAX_STEPS、工具池、router、模板、KV cache、并行度。即使固定 seed 也不承诺 GPU 结果逐 bit 相同。结构化输出不能代替执行前 schema/业务校验。
 
@@ -113,7 +115,7 @@ CI 普通任务跑校验、mock 场景和确定性安全测试；本地 GPU 任�
 ## 8. 三个必做实验
 
 1. RAG 四组消融：同语料/切分/问题，检索质量与生成结果分阶段测；rewrite 单独开关。
-2. 4B/8B±router，可选14B：同候选工具/上下文/think/Judge/fixture。压力工具池另列。
+2. 4B/9B±router，可选27B：同候选工具/上下文/think/Judge/fixture。压力工具池另列。
 3. Verifier：已知错误与已知正确双集，覆盖实体错绑、单位、派生值、引用版本/定位/支持，TPR/FPR附样本量和漏报误报。
 
 报告模板：问题、固定项与变量、环境与hash、适用样本数、结果/区间、失败用例、限制和下一步。按证据回答改动是否有益，不要求复杂配置必须胜过 baseline。

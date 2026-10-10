@@ -5,7 +5,7 @@
 ## Phase0（20h）
 
 - [ ] 应用独立目录、Git、Python3.12/uv/venv、合法pyproject/lock。
-- [ ] Ollama与qwen3:4b能完成最小请求，保存版本/digest与GPU/CPU实测状态。
+- [ ] Ollama与qwen3.5:4b能完成最小请求，保存版本/digest与GPU/CPU实测状态。
 - [ ] 配置样例、脱敏日志、测试与lint入口、实际工时记录。
 - [ ] Phase0无需一次装4模型/启动4服务，核心验收通过，phase0-done。
 
@@ -57,7 +57,7 @@
 
 - [ ] 目标10（20h）：同用户跨session Memory，不同user/project隔离；短显式偏好不误过滤。
 - [ ] 改口事务、有效hash唯一索引、语义复核、来源/查看/纠正/删除与投毒防护。
-- [ ] 目标11（15h）：4B/8B±router与可选14B，全组相同Judge/config/fixture。
+- [ ] 目标11（15h）：4B/9B±router与可选27B，全组相同Judge/config/fixture。
 - [ ] 每配置3次，原始结果/方差/区间/质量/延迟/tokens/峰值VRAM与换模成本。
 - [ ] 目标12（15h）：必要tool最终状态、事实绑定、单位/派生量、引用存在/定位/支持、unsupported、schema。
 - [ ] 已知错误/正确集TPR/FPR，实体错绑/引用版本/合理无引用覆盖；不只查数字集合。

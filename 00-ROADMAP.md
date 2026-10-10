@@ -17,7 +17,7 @@ Phase 0 → M1 手写 Loop → M2 API/数据库 → M3 RAG → M4 Tool/MCP/Graph
 
 ## 2. Phase 0：环境与地基（20h，W0）
 
-核心只要求 Git、Python 3.12 虚拟环境、Ollama、`qwen3:4b`、测试与格式检查入口、`.env.example`。Docker 在 M1 第一次执行不可信脚本前引入；PostgreSQL 到 M2，Qdrant 与 embedding 到 M3，Redis 到需要独立 worker 时，对象存储按实际需求引入。
+核心只要求 Git、Python 3.12 虚拟环境、Ollama、`qwen3.5:4b`、测试与格式检查入口、`.env.example`。Docker 在 M1 第一次执行不可信脚本前引入；PostgreSQL 到 M2，Qdrant 与 embedding 到 M3，Redis 到需要独立 worker 时，对象存储按实际需求引入。
 
 记录机器、GPU 空闲占用、驱动、Ollama 版本和一次真实推理结果。命令详见 [01-ENVIRONMENT.md](01-ENVIRONMENT.md)。Done：从新终端进入虚拟环境能运行最小请求和一个测试，配置中没有真实密钥，标记 `phase0-done`。安装受阻时记录降级；GPU 直通容器不作为核心完成条件。
 
@@ -123,7 +123,7 @@ Done：跨会话共享同一测试用户；不同用户/项目不共享；纠正
 
 ### 目标十一：小模型优化（15h）
 
-同族同量化比较 qwen3 4B/8B；14B 可选。五组配置为 4B±router、8B±router、14B+router；固定候选工具池与 fixture，80 工具压力实验是选修，不能用 9 工具结果声称证明 80 工具能力。
+同族同量化比较 qwen3.5 4B/9B（Qwen3.5 无 8B 尺寸，最近的是 9B）；27B 可选。五组配置为 4B±router、9B±router、27B+router；固定候选工具池与 fixture，80 工具压力实验是选修，不能用 9 工具结果声称证明 80 工具能力。
 
 Router 与上下文压缩分别消融；固定温度、think、num_ctx、seed 和 Judge。重复 3 次，报告每次与汇总方差；多数票是另一个配置，不替代单次准确率。
 
