@@ -5,7 +5,14 @@
 > 仓库更名记录：`local-agent-learning-path` → `Agent-development-doc`（2026-10-10）。
 > 配套实现仓库：`Agent-development-code`（原 `local-professional-agent`）。
 
-本包是学习与工程设计文档，包含评测种子和离线校验工具；应用代码将在独立的 `D:\work\Agent-development-code` 仓库实现。引用的《Agent 全栈开发学习目标与成果验收文档》原件未随本包提供，因此原章节编号仅保留为对照，不能声称已经核对原件全部要求。
+本包是学习与工程设计文档，包含评测种子和离线校验工具；应用代码在独立的
+`Agent-development-code` 仓库实现。
+
+**实现边界（2026-10-10 确定）**：仓库、Ollama、Docker、数据库、向量库、API 与前端
+**全部运行在 Ubuntu 内**，Windows 不承担任何实现角色。最终交付物是一个**前端页面**，
+验收方式就是「Windows 能用浏览器从网络打开它」。详见 [01-ENVIRONMENT.md](01-ENVIRONMENT.md) §0 与 §5。
+
+引用的《Agent 全栈开发学习目标与成果验收文档》原件未随本包提供，因此原章节编号仅保留为对照，不能声称已经核对原件全部要求。
 
 ## 1. 设计原则
 
@@ -45,10 +52,11 @@
 | [04-AI-ASSISTED-DEV.md](04-AI-ASSISTED-DEV.md) | AI 辅助与独立能力验收 | 人机分工 |
 | [checklist.md](checklist.md) | 阶段交付物与检查 | 只引用上述契约，不重新定义 |
 
-**2026-10-10 补充修订**：新增 WSL 开发环境决策与实测快照（见
-[01-ENVIRONMENT.md](01-ENVIRONMENT.md) §0 与 §8），并把 Docker 路线改为
-「WSL 内原生 engine」为主、「Docker Desktop」为备选（§4）；§5 相应改写为
-宿主 IP 访问方式。据此新增下方 §5「实现仓库与同步」。
+**2026-10-10 补充修订（已按 Ubuntu 单机重写）**：环境拓扑改为
+「**全部在 Ubuntu 内实现**」——Ollama 已迁为 Ubuntu 内的 systemd 服务
+（`127.0.0.1:11434`），Docker 用 Ubuntu 原生 engine，Windows 侧不再有任何实现步骤。
+据此次重写更新了 [01-ENVIRONMENT.md](01-ENVIRONMENT.md) §0、§3、§4、§5 与 §8。
+详见 [REVISION-2026-10-10.md](REVISION-2026-10-10.md) §5 与本包 §5「实现仓库与同步」。
 
 冲突按权威范围修复；修改契约时同步引用文档和种子，不能仅在新增附录里覆盖旧规则。
 
@@ -72,10 +80,10 @@ python3 scripts/check_docs.py
 
 ## 5. 实现仓库与同步
 
-应用实现建在**独立仓库** `Agent-development-code`，按 §0 的 WSL 决策放在
-`~/projects/Agent-development-code`（WSL ext4，**不要**放 `/mnt/d`）。
+应用实现建在**独立仓库** `Agent-development-code`，与本文档同级摆放在
+`/home/zsw/work/agent_development/`（Ubuntu 的 ext4，**不要**放 `/mnt/c`、`/mnt/d`）。
 
-两个仓库必须**同级摆放**，否则本文档里的 `../Agent-development-doc/` 相对链接会断。
+两个仓库必须**同级摆放**，否则本文档里的 `../Agent-development-code/` 相对链接会断。
 
 同步方式、目录约定与新机器部署步骤见实现仓库的
 [docs/GIT-SYNC.md](../Agent-development-code/docs/GIT-SYNC.md)。

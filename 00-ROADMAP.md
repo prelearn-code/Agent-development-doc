@@ -1,6 +1,10 @@
 # 00 - 主学习路径
 
 > 450h 基础预算，建议含余量预留 520~565h。目标编号保留与原验收文档的对照；原件未提供。接口以 [repo-structure.md](repo-structure.md) 为准，指标以 [02-MODEL-AND-EVAL.md](02-MODEL-AND-EVAL.md) 为准。
+>
+> **实现与交付边界**：全部实现（仓库、Ollama、Docker、数据库、向量库、API、前端）都在 Ubuntu 内完成，
+> Windows 不承担实现角色。**最终交付物是 M6 的前端页面**：Windows 用浏览器从网络访问它即可看到
+> 全链路结果，不需要在 Windows 上安装或配置任何东西。环境见 [01-ENVIRONMENT.md](01-ENVIRONMENT.md) §0、§5。
 
 ## 1. 依赖与提前落地的护栏
 
@@ -23,7 +27,7 @@ Phase 0 → M1 手写 Loop → M2 API/数据库 → M3 RAG → M4 Tool/MCP/Graph
 
 学习包、类型、Pydantic、async、异常、HTTP client、配置与结构化日志。统一 `ToolResult` 为 Pydantic `BaseModel` 泛型，序列化使用 `model_dump_json()`；定义见接口文档。
 
-实现 calculator、read_file、query_database 的 fixture adapter、run_python 的最小版本。calculator 使用受限 AST；read_file 解析规范路径并核对获授权资源，处理符号链接/Windows junction，限制大小。query_database 接受结构化参数，M1 查 JSON fixture，M2 接只读数据库。
+实现 calculator、read_file、query_database 的 fixture adapter、run_python 的最小版本。calculator 使用受限 AST；read_file 解析规范路径并核对获授权资源，处理符号链接与挂载点边界，限制大小。query_database 接受结构化参数，M1 查 JSON fixture，M2 接只读数据库。
 
 `run_python` 首先只支持受信任且版本固定的统计模板；需要执行模型生成脚本时，必须先通过 Docker Sandbox 验收。Sandbox 无网络、无秘密、非 root、只读根文件系统、限制 CPU/内存/PID/输出、仅挂载本次任务输入和输出目录，不挂载 Docker socket。不能降级为宿主机执行不可信代码。容器或子进程超时必须 terminate/kill、wait 和清理，`asyncio.wait_for` 本身不负责杀子进程。
 
@@ -151,13 +155,19 @@ Done：被拒绝的尝试有审计；实际数据库/文件/网络副作用没�
 
 ### 目标十五：前端（30h）
 
+**这是最终交付界面**：整条链路（检索、工具调用、审批、引用、验证）都以页面的形式呈现，
+评审只看这个页面，不要求评审在 Windows 上跑命令。
+
 React/TypeScript，Chat、Session、Upload、Knowledge、Steps、Tool Calls、Sources、Approval、Run History 九区块。POST 流使用 fetch；GET events 可使用支持鉴权的 fetch。解析器处理 CRLF、UTF-8 跨块、空行、heartbeat 和 event_id 去重。审批只提交 approval_id/action_hash/decision，不相信前端提供的角色或风险。
 
 Draft token 明确标为未验证；Verifier 完成后 final 事件替换为已验证答案。刷新从 Run 状态重建待审批动作，重连不触发重新执行；显式 cancel 才取消 detach 任务。Markdown/文件名/工具输出安全渲染，秘密不进入浏览器日志。
 
+前端与 API 需**监听对外网卡以便 Windows 访问**，其余服务（Ollama/DB/向量库）保持回环；
+越权与断线用例要在"从 Windows 浏览器访问"的同一条链路上验证（见 [01-ENVIRONMENT.md](01-ENVIRONMENT.md) §5.2）。
+
 ### 目标十六：部署（15h）
 
-Compose 按 profiles 启动 API/worker/前端/DB/向量库/可选队列对象存储/MCP，Ollama 保留宿主机。版本/digest 冻结、健康检查、迁移、volume、日志轮转、资源限制与网络隔离完整。API 不持有 Docker socket；只有可信 Sandbox launcher 有受控调用能力。
+Compose 按 profiles 启动 API/worker/前端/DB/向量库/可选队列对象存储/MCP，**Ollama 与全部服务都在 Ubuntu 内**（Ollama 绑 `127.0.0.1`，不对外）。版本/digest 冻结、健康检查、迁移、volume、日志轮转、资源限制与网络隔离完整。API 不持有 Docker socket；只有可信 Sandbox launcher 有受控调用能力。
 
 Done：干净 clone → 配置 → 安装固定环境/拉模型 → 迁移 → 启动 → smoke；重启数据不丢，端口不无条件开放；无 GPU 时明确降级，不伪报 GPU baseline。
 
@@ -165,7 +175,7 @@ Done：干净 clone → 配置 → 安装固定环境/拉模型 → 迁移 → �
 
 任务：检索原理 → 查历史 → 提议 100MB/500MB/1GB 实验 → 审批 → 执行 → 计算对比 → Verifier → 带版本化来源的报告。数据规模统一明确 MB/GB 十进制；若使用二进制则标 MiB/GiB。
 
-验收：UI 每步可见、恢复不重复实验、正确事实与引用绑定、审计包含审批/失败/拒绝、完整任务加入冻结 scenario。标记 `m6-done`。15h 只预算已有模块集成；领域算法从零实现和大量真实实验另列工时。
+验收：UI 每步可见、恢复不重复实验、正确事实与引用绑定、审计包含审批/失败/拒绝、完整任务加入冻结 scenario。标记 `m6-done`。15h 只预算已有模块集成；领域算法从零实现和大量真实实验另列工时。**交付复现方式**：在 Ubuntu 内启动后，Windows 用浏览器访问前端地址即可看到全过程；这是唯一的验收入口。
 
 ## 9. 12 周最小路径
 

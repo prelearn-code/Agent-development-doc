@@ -73,10 +73,11 @@
 - [ ] 目标15（30h）：九UI区块、实时状态、刷新/reconnect/审批/cancel正确。
 - [ ] draft token显示未验证；final替换，错误不展示为已验证；安全Markdown渲染。
 - [ ] 目标16（15h）：profiles、固定镜像/依赖/model、健康/迁移/volume/网络/日志轮转。
-- [ ] API无Docker socket与bootstrap/migration秘密；宿主机Ollama开放范围受控。
+- [ ] API无Docker socket与bootstrap/migration秘密；**Ollama仅监听127.0.0.1**，仅前端/API端口对外。
 - [ ] 干净目录安装→迁移→启动→smoke，重启数据不丢。
 - [ ] 综合项目（15h）：检索/历史/三档实验审批/执行/派生对比/验证/报告全链路。
 - [ ] 故障恢复不重复实验，版本化来源/审计完整，冻结scenario回归，m6-done。
+- [ ] **交付验收**：Windows 浏览器从网络打开前端地址即可复现全链路，Windows 侧零安装。
 
 ## 阶段共同检查
 

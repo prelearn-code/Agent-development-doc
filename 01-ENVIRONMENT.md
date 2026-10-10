@@ -1,44 +1,67 @@
 # 01 - 分阶段环境搭建
 
-> 2026-10-10 修订；同日补充 WSL 决策与实测记录（§2）。硬件与工具链数值为 2026-10-10 实测，
-> 替换旧文档的估算值。**安装命令不等于已验证完成**，每项须有实际验证输出。
+> 2026-10-10 修订；同日按「全部在 Ubuntu 内实现」重写环境拓扑（§0）。
+> 硬件与工具链数值为 2026-10-10 在 Ubuntu 内实测，替换旧文档的估算值与 Windows 侧记录。
+> **安装命令不等于已验证完成**，每项须有实际验证输出。
 
-## 0. 决策：开发环境用 WSL Ubuntu（2026-10-10 实测后确定）
+## 0. 决策：全部在 Ubuntu 内实现，Windows 只作浏览器客户端
 
-**结论：仓库与 Docker 都在 WSL Ubuntu-22.04 内；Ollama 保留在 Windows 原生。**
+**结论：仓库、Ollama、Docker、数据库、向量库、API、前端全部运行在 Ubuntu 内；
+Windows 不承担任何实现角色，只通过浏览器从网络访问前端页面。**
+
+本机 Ubuntu 是 WSL2 里的 Ubuntu-22.04.5（内核 `6.6.87.2-microsoft-standard-WSL2`），
+但它对项目而言就是**一台 Linux 主机**：所有进程、文件、容器、GPU 访问都在它内部完成。
+除「用浏览器打开页面」以外，本指南不包含任何 Windows 侧的实现步骤。
 
 这不是偏好，是 M1 的 sandbox 要求决定的。原验收文档要求隔离环境满足
 "无网络、无秘密、非 root、只读根文件系统、限制 CPU/内存/PID/输出、
 不挂载 Docker socket"，且**"不能降级为宿主机执行不可信代码"**。
-这些是 Linux namespace/cgroup 原语，Windows 侧没有对等替代。
+这些是 Linux namespace/cgroup 原语，Windows 侧没有对等替代 ——
+所以不仅 sandbox，整个实现栈都留在 Ubuntu 内最省事，也最接近 M6 的真实部署形态。
 
 实测依据：
 
 | 项 | 实测值 | 含义 |
 |---|---|---|
-| WSL 发行版 | Ubuntu-22.04.5 LTS，运行中 | 可用 |
-| WSL 内 Docker | **原生 29.1.3**，`/var/run/docker.sock` | 无需 Docker Desktop |
-| Docker 能力 | `overlay2` + **cgroup v2** + seccomp + runc 1.3.3 | sandbox 硬条件已满足 |
-| GPU 直通 | WSL 内 `nvidia-smi -L` 可见 RTX 5060 Ti | 需要时可用 |
-| uv | `/home/zsw/.local/bin/uv` | 已装 |
-| WSL 磁盘 | `/` 1007 GB，可用 750 GB | 充足 |
-| WSL 用户 | `zsw`（非 root） | 符合最小权限 |
+| 发行版 | Ubuntu 22.04.5 LTS（WSL2） | 可用 |
+| Ubuntu 内 Docker | **原生 29.1.3**，`/var/run/docker.sock` | 无需 Docker Desktop |
+| Docker 能力 | `overlay2` + cgroup v2 + seccomp | sandbox 硬条件已满足 |
+| Ubuntu 内 GPU | `nvidia-smi` 可见 RTX 5060 Ti，驱动 591.86 | GPU 直通已生效 |
+| Ubuntu 内 Ollama | **0.32.15，systemd 服务 enabled 且运行中** | 已是 Ubuntu 服务 |
+| uv | `~/.local/bin/uv`，0.11.12 | 已装 |
+| Ubuntu 内 Node | v22.23.2 + pnpm 12.3.4 | M6 前端直接可用 |
+| 磁盘 | `/` 1007 GB，可用 750 GB | 充足 |
+| Ubuntu 用户 | `zsw`（非 root） | 符合最小权限 |
 
-### 0.1 仓库必须放在 WSL 的 ext4 上
+### 0.1 仓库放在 Ubuntu 的文件系统上
 
-`/mnt/d/...` 走 9P 协议，venv、node_modules 这类大量小文件操作会慢数倍。
-仓库路径用 `~/projects/Agent-development-code`，**不要**放 `/mnt/d`。
+两个仓库同级摆放在 `/home/zsw/work/agent_development/`：
 
-指南包是静态 Markdown，留在 `D:\work\Agent-development-doc` 即可，
-从 WSL 按 `/mnt/d/work/Agent-development-doc` 读取（只读不影响性能）。
+```
+/home/zsw/work/agent_development/
+├── Agent-development-doc/     ← 指南（静态 Markdown）
+└── Agent-development-code/    ← 实现仓库
+```
 
-### 0.2 为什么 Ollama 留在 Windows
+同级是硬要求：指南里的 `../Agent-development-code/` 相对链接否则会断。
 
-GPU 直通已生效、模型已下载（其中一个 16.52 GB），迁移需重拉或用 `ollama cp` 搬运，
-收益不足。代价是 WSL 内必须走**宿主 IP** 而非 `localhost`（见 §5）。
+**不要**把实现仓库放到 `/mnt/c`、`/mnt/d` 这类 Windows 挂载点：它们走 9P 协议，
+venv、node_modules 这种大量小文件操作会慢数倍。实现仓库必须在 Ubuntu 的 ext4 上。
 
-若后续 WSL→Windows 网络持续不稳，再考虑把 Ollama 移入 WSL ——
-GPU 直通已实测可用，这条退路是通的，但要重新拉模型并重测显存占用。
+### 0.2 为什么 Ollama 也在 Ubuntu 内
+
+旧方案把 Ollama 留在 Windows 宿主，Ubuntu 侧用宿主 IP 跨网络访问，代价是：
+端口要监听 `0.0.0.0`、要开防火墙、宿主 IP 随 WSL 重建而变、多一层网络故障点。
+
+现在 Ollama 已作为 **Ubuntu 内的 systemd 服务**运行（`/usr/local/bin/ollama`，
+监听 `127.0.0.1:11434`），于是：
+
+- 应用与 Ollama 之间是**本机回环**，不经过任何跨系统网络，`localhost` 可用。
+- 宿主 IP 漂移问题消失，`.env` 不需要随环境改地址。
+- Ollama **不再需要对外监听**，攻击面反而比旧方案小。
+
+GPU 直通在 Ubuntu 内已实测可用，模型文件也在 Ubuntu 内
+（`/usr/share/ollama/.ollama/models`，当前 20 GB），迁移成本已经付过了。
 
 ### 0.3 环境改变的纪律
 
@@ -51,30 +74,27 @@ GPU 直通已实测可用，这条退路是通的，但要重新拉模型并重�
 |---|---|---|
 | Phase 0 | Git、Python 3.12、uv、Ollama、qwen3:4b | 8B/14B、Docker、数据库 |
 | M1 | 首次运行不可信代码前完成 Docker Sandbox | GPU 直通容器 |
-| M2 | WSL 内 Docker + compose 插件、PostgreSQL + pgvector、Alembic | Redis、MinIO |
+| M2 | Ubuntu 内 Docker + compose 插件、PostgreSQL + pgvector、Alembic | Redis、MinIO |
 | M3 | Qdrant、bge-m3；reranker 后引入 | learned sparse |
-| M4~M6 | Graph checkpointer、需要时 Redis worker、对象存储、Node | WebSocket、GPU sandbox |
+| M4~M6 | Graph checkpointer、需要时 Redis worker、对象存储、Node（前端） | WebSocket、GPU sandbox |
 
-宿主机应用访问 localhost；容器内部访问 postgres/qdrant/redis 等服务名。不要把宿主机 URL 原样复制进容器。
-**例外**：Ollama 在 Windows 宿主，WSL 应用与容器都访问**宿主 IP**，不是 localhost（§5）。
+Ubuntu 内的应用访问 `localhost`；容器内部访问 postgres/qdrant/redis 等服务名。
+不要把服务名 URL 原样复制到 Ubuntu 宿主机，也不要把宿主机 URL 复制进容器。
+Ollama 是唯一需要在容器里用 `host.docker.internal` 或 `network_mode: host` 访问的服务（§5）。
 
 ## 2. Python 与目录
 
-按 §0 的决策：指南留在 `D:\work\Agent-development-doc`（静态文档，Windows 侧编辑即可），
-应用建在 **WSL 内** `~/projects/Agent-development-code`。命令从应用根目录运行。
+指南与实现仓库都在 `/home/zsw/work/agent_development/`（同级）。命令从应用根目录运行。
 
-**WSL 系统自带 Python 3.10.12，不满足项目的 3.12 要求。用 uv 提供，不要 `apt install`**
+**Ubuntu 系统自带 Python 3.10.12，不满足项目的 3.12 要求。用 uv 提供，不要 `apt install`**
 （Ubuntu 22.04 默认源没有 3.12，加 deadsnakes PPA 会污染系统环境）：
 
 ```bash
-# WSL 内执行
-uv venv --python 3.12 .venv          # uv 自动下载 cpython-3.12.13，无需 root
+# Ubuntu 内执行，工作目录 = 实现仓库根
+uv venv --python 3.12 .venv          # uv 自动下载 cpython-3.12，无需 root
 source .venv/bin/activate
 python -c "import sys; print(sys.executable, sys.prefix)"   # 必须指向 .venv
 ```
-
-Windows 侧的历史解释器路径 `D:\evm\python3.12.8\python.exe` **已不再是项目依赖**；
-仅在需要 Windows 原生跑脚本时使用。
 
 先创建合法 pyproject（至少 name/version/requires-python），按里程碑加入依赖；
 提交 uv.lock，正式启动 `uv sync --frozen`。开发依赖 pytest/pytest-asyncio/ruff/mypy；
@@ -86,22 +106,42 @@ M3 再加 qdrant-client/pymupdf/BM25/分词器，M4 加 mcp/langgraph/checkpoint
 > 并带有纯标准库的自检脚本 `scripts/selftest.py`（校验目录布局、`.env.example` 与
 > `Settings` 字段双向一致、密钥扫描、分层反向依赖）。**在 `uv sync` 之前就能跑**。
 
-## 3. Ollama
+## 3. Ollama（Ubuntu 内 systemd 服务）
 
-```powershell
-winget install --id Ollama.Ollama -e
-Invoke-RestMethod http://127.0.0.1:11434/api/version
-ollama pull qwen3:4b
+Ollama 已安装并注册为系统服务，**不是** Windows 程序：
+
+```bash
+# 状态与版本
+systemctl status ollama --no-pager
+ollama --version                     # 实测 0.32.15
+curl -s http://127.0.0.1:11434/api/version
+
+# 模型
+ollama list
+ollama pull qwen3:4b                 # Phase 0 唯一必需模型（待拉取）
 ollama run qwen3:4b "用一句话说明工具调用"
 ollama ps
 ```
 
-M3 拉 bge-m3，M5 按需拉 8B/14B。模型名可变，实验记录实际 digest、量化、template、上下文参数；权重体积不能直接当推理峰值显存。
+模型文件在 `/usr/share/ollama/.ollama/models`（当前 20 GB）。M3 拉 bge-m3，
+M5 按需拉 8B/14B。模型名可变，实验记录实际 digest、量化、template、上下文参数；
+权重体积不能直接当推理峰值显存。
+
+Ollama 的服务参数通过 systemd override 设置，不用 Windows 环境变量：
+
+```bash
+sudo systemctl edit ollama
+# 在 [Service] 段加入，然后 sudo systemctl restart ollama
+#   Environment="OLLAMA_MAX_LOADED_MODELS=1"
+#   Environment="OLLAMA_NUM_PARALLEL=1"
+#   Environment="OLLAMA_KEEP_ALIVE=5m"
+#   Environment="OLLAMA_FLASH_ATTENTION=1"
+```
 
 | 变量 | 起点 | 注意 |
 |---|---|---|
-| OLLAMA_HOST | 127.0.0.1:11434 | 默认仅本机 |
-| OLLAMA_MODELS | D:\ollama-models | 按磁盘空间选择 |
+| OLLAMA_HOST | 127.0.0.1:11434 | **默认仅本机即可**，不要为了容器改成 0.0.0.0（§5） |
+| OLLAMA_MODELS | /usr/share/ollama/.ollama/models | 按磁盘空间选择 |
 | OLLAMA_MAX_LOADED_MODELS | 1 | 限 Ollama 管理的模型，不限制 PyTorch |
 | OLLAMA_NUM_PARALLEL | 1 | baseline 固定串行 |
 | OLLAMA_KEEP_ALIVE | 5m | embedding 与 controller 切换可能导致重复加载 |
@@ -112,15 +152,13 @@ M3 拉 bge-m3，M5 按需拉 8B/14B。模型名可变，实验记录实际 diges
 
 原生 `/api/chat` 的流是 NDJSON；应用 `/chat` 给前端的流是 SSE，两层分别适配。[Ollama streaming](https://docs.ollama.com/api/streaming)、[tool calling](https://docs.ollama.com/capabilities/tool-calling)
 
-## 4. Docker：两条路线（2026-10-10 实测后修订）
+## 4. Docker：Ubuntu 内原生 engine
 
-本机实测：**WSL 内已有原生 Docker engine 29.1.3**（`overlay2` + cgroup v2 + seccomp），
-Windows 侧**未安装** Docker Desktop。因此走**路线 A**。
-
-### 路线 A（本机采用）：WSL 内原生 Docker engine
+本机实测：**Ubuntu 内已有原生 Docker engine 29.1.3**（`overlay2` + cgroup v2 + seccomp），
+Windows 侧**未安装也不需要** Docker Desktop。整个项目只有这一条路线。
 
 ```bash
-# 唯一缺口：compose 插件
+# 唯一缺口：compose 插件（实测 `docker compose` 仍是 unknown command）
 sudo apt update && sudo apt install -y docker-compose-plugin
 docker version
 docker compose version
@@ -129,33 +167,9 @@ docker run --rm hello-world
 
 优点：少一层转发，compose 行为与 Linux 服务器一致，M6 的"干净环境部署"验收更真实；
 `read_only`、`--network none`、PID/内存限制等 M1 sandbox 原语直接可用。
-代价：容器无法直接读写 Windows 文件系统路径，需要在 WSL 内准备挂载目录。
 
-Docker daemon 的 cgroup 上限由 WSL 的 `.wslconfig` 控制（用户目录），
-示例 `memory=12GB`、`processors=8`，调整后需按 WSL 要求重启。
-不是所有版本都能在 Docker Desktop 里设置 WSL 内存 —— 路线 A 下该设置项不适用。
-[Docker WSL 指南](https://docs.docker.com/desktop/features/wsl/best-practices/)
-
-### 路线 B（备选）：Docker Desktop + WSL2 集成
-
-```powershell
-winget install --id Docker.DockerDesktop -e
-```
-
-仅在前述条件不成立时使用（例如需要与 Windows 文件系统深度集成、
-或本机没有可用 WSL 发行版）。开启 WSL2 backend 和所需发行版集成。
-
-**两条路线的差异会影响后续配置**：
-
-| 项 | 路线 A（原生） | 路线 B（Desktop） |
-|---|---|---|
-| 容器访问宿主 Ollama | 宿主 IP，需 `extra_hosts` | 通常可用 `host.docker.internal` |
-| compose 端口绑定行为 | 与 Linux 一致 | 经 Desktop 转发 |
-| GPU 直通 | WSL 原生，`nvidia-smi` 已验证可见 | Desktop 设置项 |
-| Windows 路径挂载 | 不直接支持 | 支持 |
-
-**本机验证记录**：`docker info` 报 `StorageDriver=overlay2 CgroupVersion=2`，
-seccomp 启用，runc 1.3.3。WSL 内 `nvidia-smi -L` 可见 RTX 5060 Ti。
+Docker daemon 的资源上限由 WSL 的 `.wslconfig` 控制。实测 Ubuntu 内可见
+RAM 15 GB / 20 线程（宿主 31.8 GB / 20 线程），容器上限不得超出这个可见范围。
 
 开发 Compose 从 PostgreSQL 单服务开始；向量库、队列、对象存储使用 profiles。下例是**待填版本的模板**，尖括号值不可直接执行，选择版本、验证后记录 digest。完整 DB role/迁移契约见 [repo-structure.md](repo-structure.md)。
 
@@ -190,35 +204,31 @@ Qdrant readiness 使用外部探针检查该版本 `/readyz`，或构建带探�
 
 `POSTGRES_USER` 初始化为超级用户，只给 bootstrap 工具使用。app_user/query_reader/audit_writer 密钥各自独立，服务不拿 bootstrap 凭据。开发端口绑定 127.0.0.1；部署内部数据库不映射宿主机端口。[官方镜像账号说明](https://hub.docker.com/_/postgres)
 
-## 5. 容器访问宿主机 Ollama
+## 5. 网络：Ubuntu 内部回环，Windows 只访问前端
 
-**本机采用路线 A（WSL 原生 Docker），因此 `host.docker.internal` 不自动存在**，
-与路线 B 的写法不同。
+现在只有两条链路，且方向相反：**Ubuntu 内部全是回环，跨系统只有"Windows 浏览器 → 前端页面"这一条**。
 
-WSL 默认 NAT 模式下有两条独立链路，都要打通：
+### 5.1 Ubuntu 内部
 
 ```
-WSL 内的 Python 应用  ──► 宿主 IP:11434
-Docker 容器          ──► 宿主 IP:11434（需 extra_hosts 或直接写 IP）
+Ubuntu 上的 Python 应用  ──►  127.0.0.1:11434   (Ollama)
+Ubuntu 上的容器          ──►  postgres / qdrant 服务名
 ```
 
-取宿主 IP（WSL 重建后会变，需重新确认）：
-
-```bash
-ip route show default | awk '{print $3}'      # 实测 172.26.0.1
-```
-
-Windows 侧必须让 Ollama 监听非回环地址，否则两条链路都不通：
-
-```powershell
-[Environment]::SetEnvironmentVariable('OLLAMA_HOST','0.0.0.0:11434','User')
-# 重启 Ollama 后确认监听
-netstat -ano | Select-String '11434'
-```
-
-compose 里显式声明宿主（路线 A 必需）：
+Ollama 默认只监听 `127.0.0.1`，这是**推荐状态**。如果 M2/M4 的容器里确实需要调 Ollama，
+用下面两种方式之一，**不要**把 Ollama 改成监听 `0.0.0.0` 再开防火墙：
 
 ```yaml
+# 方式一（推荐，单机开发）：容器共享宿主网络，直接 127.0.0.1:11434
+services:
+  agent-api:
+    network_mode: host
+    environment:
+      OLLAMA_BASE_URL: http://127.0.0.1:11434
+```
+
+```yaml
+# 方式二：显式声明宿主机，此时 Ollama 必须额外监听 docker0 地址
 services:
   agent-api:
     extra_hosts:
@@ -227,30 +237,53 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
 ```
 
-**防火墙规则必须限制来源，不能只按 Private profile 放行**：
-绑定 `0.0.0.0` 后，任何能路由到该端口的客户端都能调用 Ollama。
-至少限定到 WSL 所在网段（本机 NAT 网关为 `172.26.0.0/20` 一类），
-并避免在公共网络配置下生效：
+方式二的 `host.docker.internal` 解析到 `172.17.0.1`（docker0）；若 Ollama 仍只绑
+`127.0.0.1` 则连不通，需要把 `OLLAMA_HOST` 改为 `172.17.0.1:11434`。
+该地址只在本机 docker0 网桥上可达，不暴露到局域网，但**改了就要用
+`ss -ltnp | grep 11434` 和一次真实 `curl` 各自确认**，不能凭本文件的示例值认定生效。
 
-```powershell
-New-NetFirewallRule -DisplayName "Ollama for WSL" -Direction Inbound `
-  -Protocol TCP -LocalPort 11434 -Action Allow `
-  -RemoteAddress 172.26.0.0/20 -Profile Private
+> 无论哪种方式，Ollama **不监听 `0.0.0.0`**，也不加任何对外放行规则。
+
+### 5.2 Windows 访问前端（唯一跨系统链路）
+
+最终交付物是一个**前端页面**，验收方式就是"Windows 上能用浏览器打开它"。
+因此前端（以及 M6 的静态站点）必须监听所有网卡，而不是只绑回环：
+
+```bash
+# 前端与 API 监听 0.0.0.0:<port>，例如
+uv run uvicorn services.agent_api.main:app --host 0.0.0.0 --port 8000
 ```
 
-需要外部访问时增加鉴权代理；Ollama 不直接暴露到互联网。
-[Ollama FAQ](https://docs.ollama.com/faq)
+Windows 侧打开浏览器访问下列任一地址：
 
-> 端口与网段的实际值必须在改完后用 `netstat` 与 `curl` 各自验证一次，
-> 不能只凭本文件的示例值认定已生效。
+```text
+http://172.26.9.67:8000      # Ubuntu 的 eth0 地址（实测；WSL 重建后会变）
+http://localhost:8000         # WSL2 的 localhost 转发，多数情况可用
+```
+
+取当前 Ubuntu 地址：
+
+```bash
+hostname -I | awk '{print $1}'
+```
+
+约束与纪律：
+
+- **只放行前端/API 端口**。数据库、Qdrant、Redis、Ollama 一律绑 `127.0.0.1`，
+  不映射到对外网卡 —— 前端是唯一的对外入口。
+- API 自身的鉴权（`API_KEY_HEADER`）不因为是"内网"而省略；
+  M2 的越权用例必须在**从 Windows 访问**的同一条链路上验证。
+- 前端绑 `0.0.0.0` 意味着同网段可访问。仅在可信网络下这样做，
+  需要更严时改为绑定具体网卡地址或用反向代理加鉴权。
+- 端口与地址的实际值必须在改完后用 `ss -ltnp` 与一次真实浏览器访问各自验证一次。
 
 ## 6. PyTorch / Blackwell（M3 后段）
 
 NVIDIA 驱动显示的 CUDA Version 是驱动支持上限，不证明 wheel 包含 sm_120 的代码。Ollama 与预编译 PyTorch 一般不需要 nvcc；自行编译扩展另行安装 Toolkit。
 
-不要使用旧的 cu124 命令。选择支持 RTX 50 系的官方 wheel，固定 PyTorch 版本、CUDA 构建与依赖。**兼容起点示例**为 torch 2.7.1 + cu128，代表历史可用组合而非“最新版本”；Windows/Python 与 FlagEmbedding 集成实际通过后才锁定。当前安装也可按官网选支持 Blackwell 的更新稳定版，再重新验证，不能悄悄覆盖实验环境。
+不要使用旧的 cu124 命令。选择支持 RTX 50 系的官方 wheel，固定 PyTorch 版本、CUDA 构建与依赖。**兼容起点示例**为 torch 2.7.1 + cu128，代表历史可用组合而非“最新版本”；实际通过后才锁定。当前安装也可按官网选支持 Blackwell 的更新稳定版，再重新验证，不能悄悄覆盖实验环境。
 
-```powershell
+```bash
 uv pip install "torch==2.7.1" --index-url https://download.pytorch.org/whl/cu128
 python -c "import torch; assert torch.cuda.is_available(); x=torch.randn(256,256,device='cuda'); y=x@x; torch.cuda.synchronize(); print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0), torch.cuda.get_device_capability(0), float(y.mean()))"
 ```
@@ -261,27 +294,31 @@ python -c "import torch; assert torch.cuda.is_available(); x=torch.randn(256,256
 
 不可信代码只能在已验收的隔离环境；无 Docker 时 run_python 暂仅开放受信任模板，不允许任意脚本。Sandbox 的非 root、只读、无网络、无秘密、限制资源、超时清理和受控输出在 M1 验收，M5 扩展攻击测试。
 
-GPU 不可用可用 CPU 4B 或 CPU reranker，明确标记后不能与 GPU baseline 混比。MinIO 可先用受控本地存储 adapter；Redis 尚未引入时只支持单进程执行，不声称具备持久化队列/多 worker 恢复。GPU 容器是选修；Docker Desktop WSL2 与发行版自行运行 Docker engine 的安装流程分别处理。[Docker GPU 支持](https://docs.docker.com/desktop/features/gpu/)
+GPU 不可用可用 CPU 4B 或 CPU reranker，明确标记后不能与 GPU baseline 混比。MinIO 可先用受控本地存储 adapter；Redis 尚未引入时只支持单进程执行，不声称具备持久化队列/多 worker 恢复。GPU 容器是选修。[Docker GPU 支持](https://docs.docker.com/desktop/features/gpu/)
 
 ## 8. 环境记录
 
-保存 `environment.lock.json`：OS/WSL/驱动/GPU、Python/uv/Ollama、package lock hash、容器 digest、模型 digest/量化、num_ctx/think/temperature/seed、并行度、embedding/rerank 部署方式、冷/热启动规则。环境改变必须建新实验，不修改旧结果。
+保存 `environment.lock.json`：OS/内核/驱动/GPU、Python/uv/Ollama、package lock hash、容器 digest、模型 digest/量化、num_ctx/think/temperature/seed、并行度、embedding/rerank 部署方式、冷/热启动规则。环境改变必须建新实验，不修改旧结果。
 
-### 8.1 2026-10-10 实测快照（Phase 0 起始）
+### 8.1 2026-10-10 实测快照（Phase 0 起始，均在 Ubuntu 内取得）
 
 | 项 | 实测值 |
 |---|---|
-| CPU / RAM | i5-14600KF，14 核 / 20 线程；31.8 GB |
+| CPU / 线程 | i5-14600KF，`nproc` = 20 |
+| RAM（Ubuntu 可见） | 15 GiB（宿主 31.8 GB，WSL 限额） |
 | GPU | RTX 5060 Ti，16311 MiB；驱动 591.86 |
-| GPU 空闲占用 | 2483 MiB（桌面常驻），**可用约 13.5 GB** |
-| WSL | Ubuntu-22.04.5 LTS，`/` 可用 750 GB，用户 `zsw` |
-| WSL 网络 | **NAT 模式**，宿主网关 `172.26.0.1` |
-| Python（WSL 系统） | 3.10.12（不够，用 uv 取 3.12） |
-| uv | `/home/zsw/.local/bin/uv` |
-| Docker（WSL 原生） | 29.1.3，`overlay2` + cgroup v2 + seccomp |
+| GPU 空闲占用 | 2622 MiB（桌面常驻），**可用约 13.4 GB** |
+| 内核 | 6.6.87.2-microsoft-standard-WSL2 |
+| 发行版 | Ubuntu 22.04.5 LTS，`/` 1007 GB，可用 750 GB |
+| 用户 | `zsw`（非 root） |
+| Ubuntu 地址 | `172.26.9.67/20`（eth0；WSL 重建后会变） |
+| Python（Ubuntu 系统） | 3.10.12（不够，用 uv 取 3.12） |
+| uv | `/home/zsw/.local/bin/uv`，0.11.12 |
+| Docker（Ubuntu 原生） | 29.1.3，`overlay2` + cgroup v2 + seccomp |
 | docker compose | **缺失**，需 `docker-compose-plugin` |
-| Ollama（Windows 原生） | API v0.32.15 运行中；**CLI 不在 PATH** |
-| GPU 直通（WSL 内） | `nvidia-smi -L` 可见 RTX 5060 Ti |
+| Ollama（Ubuntu systemd） | v0.32.15，**服务 enabled 且运行中**，`127.0.0.1:11434` |
+| Ollama 模型目录 | `/usr/share/ollama/.ollama/models`，20 GB |
+| Node / pnpm（Ubuntu） | v22.23.2 / 12.3.4 |
 
 ### 8.2 模型现状与风险
 
@@ -291,17 +328,18 @@ GPU 不可用可用 CPU 4B 或 CPU reranker，明确标记后不能与 GPU basel
 | `qwen3.8-agent-32k` | qwen35 | 27.3B | 16.52 GB | 自定义微调，**非**对照基线 |
 | `qwen3-vl:4b` | qwen3vl | 4.4B | 3.07 GB | 视觉模型，不能当 Controller |
 
-**风险**：27B 权重 16.52 GB > 可用显存 13.5 GB，必然 CPU offload；
-且与 `qwen3:4b/8b` 不同代，**不能用于 §13 的 4B vs 8B 对比结论**。
+**风险**：27B 权重 16.52 GB > 可用显存 13.4 GB，必然 CPU offload；
+且与 `qwen3:4b/8b` 不同代，**不能用于 [00-ROADMAP.md](00-ROADMAP.md) 目标十一的 4B vs 8B 对比结论**。
 
 ### 8.3 Phase 0 未完成项
 
 - [ ] 拉取 `qwen3:4b`（Phase 0 唯一必需模型）
-- [ ] Ollama CLI 可用（`winget install Ollama.Ollama` 会一并补上）
-- [ ] Windows 侧 `OLLAMA_HOST=0.0.0.0:11434` + 限制来源的防火墙规则
-- [ ] WSL 侧 `docker-compose-plugin`
+- [ ] Ubuntu 侧 `docker-compose-plugin`
 - [ ] `uv venv --python 3.12` + `uv sync --extra m1 --extra dev`
 - [ ] 一个通过的最小请求测试（Phase 0 的验收判据）
+
+> 已消除的旧缺口：Ollama CLI / 服务已在 Ubuntu 内就绪；不再需要 Windows 侧
+> `OLLAMA_HOST` 与防火墙配置；不再需要查找宿主 IP。
 
 ### 8.4 应用仓库侧的同源记录
 

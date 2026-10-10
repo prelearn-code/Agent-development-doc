@@ -4,7 +4,7 @@
 
 本包提供60条RAG、25条Tool、40条综合种子，以及60行gold回填模板。种子统一为schema_version=2/status=draft，不伪称人工审核。实际领域文档、真实实验、应用Runner和向量索引尚未实现；fixtures中synthetic示例只用于工程测试，不证明领域性能。
 
-```powershell
+```bash
 # 在本包根目录；只依赖Python标准库
 python eval/validate_dataset.py --all --mode draft
 python eval/validate_dataset.py eval/seed-eval-dataset.jsonl --mode frozen --evidence-manifest eval/evidence-manifest.template.json

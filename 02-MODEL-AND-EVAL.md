@@ -67,7 +67,7 @@ Task Success 使用 success_criteria：must_call_tools 为 proposed attempt 层�
 
 token 从每次 llm_calls 实际返回的 prompt/completion 计数聚合，区分 Controller、rewrite、Memory、Verifier 和离线 Judge。Judge token 不加入在线 Agent 成本；不要用不匹配 Qwen 分词器的 tiktoken 估计充当实测值。记录 think/template 与 token 来源。
 
-显存在**整次任务**周期采样，GPU总峰值、空闲基线与进程归因分别记录；Windows WDDM 无法精确归因时明确限制，不只看第一个任务或加载瞬间。
+显存在**整次任务**周期采样，GPU总峰值、空闲基线与进程归因分别记录；Ubuntu 内用 `nvidia-smi --query-compute-apps` 做进程级归因，无法精确归因时明确限制，不只看第一个任务或加载瞬间。记录 Ubuntu 内可见显存与实测空闲占用，不用宿主机记录值代替。
 
 ## 5. 数据与实验冻结
 
