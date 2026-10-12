@@ -23,7 +23,7 @@ Windows 不承担任何实现角色，只通过浏览器从网络访问前端页
 | Ubuntu 内 GPU | `nvidia-smi` 可见 RTX 5060 Ti，驱动 591.86 | GPU 直通已生效 |
 | Ubuntu 内 Ollama | **0.32.15，systemd 服务 enabled 且运行中** | 已是 Ubuntu 服务 |
 | uv | `~/.local/bin/uv`，0.11.12 | 已装 |
-| Ubuntu 内 Node | v22.23.2 + pnpm 12.3.4 | M6 前端直接可用 |
+| Ubuntu 内 Node | v22.23.2 + pnpm 12.3.4 | V2基础前端可用，开始时重新核对 |
 | 磁盘 | `/` 1007 GB，可用 750 GB | 充足 |
 | Ubuntu 用户 | `zsw`（非 root） | 符合最小权限 |
 
@@ -59,17 +59,19 @@ Ollama 使用 Ubuntu 内的 systemd 服务，应用连接 `http://127.0.0.1:1143
 
 ## 1. 分阶段引入
 
-| 阶段 | 必需 | 可后置 |
+| 交付阶段 | 本次引入/核对 | 可后置 |
 |---|---|---|
-| Phase 0 | Git、Python 3.12、uv、Ollama、qwen3.5:4b | qwen3.5:9b、Docker、数据库 |
-| M1 | OpenSSL/GmSSL适配、选定密码接口、受控资源与超时 | 第二Provider高级能力 |
-| M2 | Ubuntu 内 Docker + compose 插件、PostgreSQL + pgvector、Alembic | Redis、MinIO |
-| M3 | Qdrant、bge-m3；reranker 后引入 | learned sparse |
-| M4~M6 | Graph checkpointer、需要时 Redis worker、对象存储、Node（前端） | WebSocket、HSM/KMS |
+| V0 | Git/Python3.12/uv/Ollama/4B、配置首测 | Node构建、DB、9B、向量库 |
+| V1 | 只读OpenSSL/GmSSL适配、受控资源/超时、httpx/测试 | 受控AEAD练习到V4 |
+| V2 | Ubuntu Docker/Compose、PostgreSQL/Alembic、Node/pnpm、API与React小页 | SSE/六查询/完整前端专项 |
+| V3 | 锁定MCP SDK，一个stdio Crypto Server与Client | 三Server、Resource/Prompt、新端点到V6 |
+| V4 | 教学keystore/profile、动作账本、Graph saver、审批/产物 | RAG、worker/队列按需后置 |
+| V5 | Qdrant/embed、reranker按需、Memory表、SSE | 9B/正式实验到V6 |
+| V6 | 9B/固定Judge、三职责MCP、完整部署/恢复；选修worker | 27B、WebSocket、HSM/KMS、多Agent |
 
-Ubuntu 内的应用访问 `localhost`；容器内部访问 postgres/qdrant/redis 等服务名。
-不要把服务名 URL 原样复制到 Ubuntu 宿主机，也不要把宿主机 URL 复制进容器。
-Ollama 是唯一需要在容器里用 `host.docker.internal` 或 `network_mode: host` 访问的服务（§5）。
+按[00](00-ROADMAP.md)分配，不把目标编号或M依赖组名当新阶段。第一前端在V2构建运行；模型/Provider/网络与权限先验证再升级。
+
+Ubuntu宿主与容器使用各自可达地址，按第5节选定host或bridge路线。宿主不要直接使用仅容器可解析的postgres/qdrant服务名，容器127.0.0.1也不是宿主Ollama。
 
 ## 2. Python 与目录
 
@@ -274,7 +276,7 @@ hostname -I | awk '{print $1}'
   需要更严时改为绑定具体网卡地址或用反向代理加鉴权。
 - 端口与地址的实际值必须在改完后用 `ss -ltnp` 与一次真实浏览器访问各自验证一次。
 
-## 6. PyTorch / Blackwell（M3 后段）
+## 6. PyTorch / Blackwell（V5检索实验按需）
 
 NVIDIA 驱动显示的 CUDA Version 是驱动支持上限，不证明 wheel 包含 sm_120 的代码。Ollama 与预编译 PyTorch 一般不需要 nvcc；自行编译扩展另行安装 Toolkit。
 
@@ -322,16 +324,16 @@ Phase 0只需qwen3.5:4b；9B在M5比较前准备。Embedding到M3引入，rerank
 实现仓库的`docs/environment.md`保存当次命令、输出、版本、未验证项和必要降级说明；`scripts/selftest.py`检查骨架与配置契约。二者与文档不一致时先核对实际环境，再同步修正。学习从 [P0环境检查](05-UBUNTU-STEP-BY-STEP.md#42-p0-01-检查已有环境) 开始。
 
 
-## 7. 按阶段验证环境，不以安装代替掌握
+## 9. 按交付验证环境，不以安装代替掌握
 
-| 阶段 | 必需新增或核对 | 真实通过条件 |
+| 交付阶段 | 必须真实验证 | 不能据此声称的能力 |
 |---|---|---|
-| Phase 0 | Ubuntu/Git/Python/uv/Ollama与4B、配置/测试 | 新终端真实请求与首测，不只是版本命令 |
-| M1 | 选定OpenSSL/GmSSL适配能力 | 库/CLI路径固定、真实摘要/证书样本、超时清理 |
-| M2 | Docker/PostgreSQL与API | 迁移、角色、volume重启、浏览器/API连通 |
-| M3 | Qdrant/embed，可选独立reranker环境 | 维度/授权过滤、定位、失败不发布active |
-| M4 | MCP/graph saver，可选worker/队列 | 恢复原审批；有worker才验收并发领取 |
-| M5 | 9B、固定Judge与实验环境 | 版本与计量齐全，正式结果用frozen，不把CPU冒充GPU |
-| M6 | Web构建/Compose/备份 | 清洁目录复现、网络边界、数据/材料恢复 |
+| V0 | 新终端请求/测试/解释器/lock | 所有Provider均支持 |
+| V1 | 真实只读工具与有限Loop，失败/超时可解释 | 已开放写动作/MCP |
+| V2 | 迁移/角色/重启与JSON API，浏览器上传/执行/查询 | 完整SSE/审批/前端毕业 |
+| V3 | 同工具直调/MCP对照、未知风险/断连拒绝 | 三职责或远程HTTP已验收 |
+| V4 | 教学密码往返、固定审批、账本与故障恢复 | 全部证书/轮换工具齐全 |
+| V5 | 三格式定位/授权/发布、Verifier/Memory/四组检索/SSE | 完整模型和frozen题库 |
+| V6 | 清洁复现、完整专项/实验、安全、材料备份恢复 | 生产CA或合规认证 |
 
-记录的历史版本不是永久要求，也不是最新版本声明。对已存在服务先验证再决定升级；升级依赖、模型、Provider或协议后按02回归规则重新验证。运行配置/健康/备份依赖见[09](09-DELIVERY-AND-ACCEPTANCE.md)，每项个人掌握深度见[00](00-ROADMAP.md)。
+历史版本是日期快照，开始时重新测量。环境变更按02回归，运行/恢复依赖见09，个人深度以00目标表为准。

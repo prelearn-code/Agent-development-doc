@@ -440,3 +440,9 @@ app API/worker 不加载 migration/bootstrap 密钥；不把完整 OLLAMA_* 环�
 RetrievalConfig 包含 dense/sparse/backend/fusion/rrf_k/rerank/top_k/query_rewrite/filters，JSON 写入 agent_runs.runtime_config 和 eval_runs.config；prompt_version 只存 prompt 版本字符串。模型实际计量写 llm_calls。
 
 CI 分层：普通 CI 执行 lint/typecheck/合同/schema/mock 场景；专用本机 GPU job 跑冻结集、固定环境和版本对比，按变更范围与发布节奏执行。安全确定性回归每次相关变更必跑，LLM 全量评测不假设托管 runner 有 GPU。阈值使用 pp 和相同 snapshot；报告完整 case failures，不能仅比总体平均。
+
+## 9. 分层接口的交付顺序
+
+V1先只读Provider/registry/execute_tool/Loop；V2最少DB迁移/身份/Run/调用/文件/审计与JSON API/基础Web；V3一个Crypto MCP Server复用同业务服务；V4增加教学key version/审批/动作/artifact/checkpoint与写恢复；V5增加documents/index/citations/Memory/完整Verifier/SSE；V6补专项查询、完整工具/MCP/图版本/评测/部署。
+
+DDL是最终参考，按阶段迁移实际需要的表，不要求V2一次建完所有业务。MCP先只读，Server执行仍需本地授权；V4写handler复查固定审批，不信任模型的approved。schema/状态/审批/事件/证据契约不因顺序调整而改变。目标编号与M task前缀保留，实际导航按[00](00-ROADMAP.md)与[05](05-UBUNTU-STEP-BY-STEP.md)。

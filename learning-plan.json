@@ -1,0 +1,469 @@
+{
+  "schema_version": 1,
+  "weekly_hours": [
+    20,
+    25
+  ],
+  "baseline_hours": 450,
+  "buffered_hours": [
+    520,
+    565
+  ],
+  "goal_hours": {
+    "0": 20,
+    "1": 25,
+    "2": 45,
+    "3": 30,
+    "4": 30,
+    "5": 35,
+    "6": 35,
+    "7": 30,
+    "8": 20,
+    "9": 30,
+    "10": 20,
+    "11": 15,
+    "12": 15,
+    "13": 20,
+    "14": 20,
+    "15": 30,
+    "16": 15,
+    "integration": 15
+  },
+  "stages": [
+    {
+      "id": "V0",
+      "name": "环境准备",
+      "hours": 20,
+      "alloc": {
+        "0": 20
+      },
+      "product": "新终端可复现环境、模型请求与首个测试"
+    },
+    {
+      "id": "V1",
+      "name": "核心工具调用",
+      "hours": 65,
+      "alloc": {
+        "1": 20,
+        "2": 45
+      },
+      "product": "两个只读工具、手写Loop、原始工具调用Trace"
+    },
+    {
+      "id": "V2",
+      "name": "第一版网页闭环",
+      "hours": 55,
+      "alloc": {
+        "3": 20,
+        "4": 20,
+        "15": 15
+      },
+      "product": "上传/提问/结果/Trace/历史、基础API和持久任务"
+    },
+    {
+      "id": "V3",
+      "name": "MCP接入",
+      "hours": 12,
+      "alloc": {
+        "8": 12
+      },
+      "product": "同一业务服务直调与一个Crypto MCP Server调用对照"
+    },
+    {
+      "id": "V4",
+      "name": "审批与密码写操作",
+      "hours": 55,
+      "alloc": {
+        "1": 5,
+        "7": 20,
+        "9": 20,
+        "12": 5,
+        "14": 5
+      },
+      "product": "一种认证加密、固定审批、产物下载、动作账本与恢复"
+    },
+    {
+      "id": "V5",
+      "name": "知识与可靠性增强",
+      "hours": 105,
+      "alloc": {
+        "3": 5,
+        "5": 35,
+        "6": 35,
+        "10": 20,
+        "12": 10
+      },
+      "product": "基础RAG/引用、完整Verifier、Memory、检索实验与SSE"
+    },
+    {
+      "id": "V6",
+      "name": "完整实验与交付",
+      "hours": 138,
+      "alloc": {
+        "3": 5,
+        "4": 10,
+        "7": 10,
+        "8": 8,
+        "9": 10,
+        "11": 15,
+        "13": 20,
+        "14": 15,
+        "15": 15,
+        "16": 15,
+        "integration": 15
+      },
+      "product": "补齐工具/三职责MCP/专项验收、模型与场景实验、完整UI/部署/恢复"
+    }
+  ],
+  "task_stages": {
+    "P0 01": {
+      "first_stage": "V0",
+      "finish_stage": "V0"
+    },
+    "P0 02": {
+      "first_stage": "V0",
+      "finish_stage": "V0"
+    },
+    "P0 03": {
+      "first_stage": "V0",
+      "finish_stage": "V0"
+    },
+    "P0 04": {
+      "first_stage": "V0",
+      "finish_stage": "V0"
+    },
+    "P0 05": {
+      "first_stage": "V0",
+      "finish_stage": "V0"
+    },
+    "M1 01": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 02": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 03": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 04": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 05": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 06": {
+      "first_stage": "V4",
+      "finish_stage": "V4"
+    },
+    "M1 07": {
+      "first_stage": "V1",
+      "finish_stage": "V4"
+    },
+    "M1 08": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 09": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 10": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 11": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 12": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M1 13": {
+      "first_stage": "V1",
+      "finish_stage": "V1"
+    },
+    "M2 01": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 02": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 03": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 04": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 05": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 06": {
+      "first_stage": "V5",
+      "finish_stage": "V6"
+    },
+    "M2 07": {
+      "first_stage": "V5",
+      "finish_stage": "V6"
+    },
+    "M2 08": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 09": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 10": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 11": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 12": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M2 13": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M2 14": {
+      "first_stage": "V2",
+      "finish_stage": "V4"
+    },
+    "M3 01": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 02": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 03": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 04": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 05": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 06": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 07": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 08": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 09": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 10": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 11": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 12": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M3 13": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M4 01": {
+      "first_stage": "V4",
+      "finish_stage": "V4"
+    },
+    "M4 02": {
+      "first_stage": "V4",
+      "finish_stage": "V4"
+    },
+    "M4 03": {
+      "first_stage": "V4",
+      "finish_stage": "V6"
+    },
+    "M4 04": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M4 05": {
+      "first_stage": "V4",
+      "finish_stage": "V6"
+    },
+    "M4 06": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M4 07": {
+      "first_stage": "V3",
+      "finish_stage": "V3"
+    },
+    "M4 08": {
+      "first_stage": "V3",
+      "finish_stage": "V3"
+    },
+    "M4 09": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M4 10": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M4 11": {
+      "first_stage": "V3",
+      "finish_stage": "V6"
+    },
+    "M4 12": {
+      "first_stage": "V4",
+      "finish_stage": "V4"
+    },
+    "M4 13": {
+      "first_stage": "V4",
+      "finish_stage": "V4"
+    },
+    "M4 14": {
+      "first_stage": "V4",
+      "finish_stage": "V4"
+    },
+    "M4 15": {
+      "first_stage": "V4",
+      "finish_stage": "V4"
+    },
+    "M4 16": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M5 01": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M5 02": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M5 03": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M5 04": {
+      "first_stage": "V5",
+      "finish_stage": "V5"
+    },
+    "M5 05": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M5 06": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M5 07": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M5 08": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M5 09": {
+      "first_stage": "V1",
+      "finish_stage": "V6"
+    },
+    "M5 10": {
+      "first_stage": "V2",
+      "finish_stage": "V6"
+    },
+    "M5 11": {
+      "first_stage": "V4",
+      "finish_stage": "V6"
+    },
+    "M5 12": {
+      "first_stage": "V1",
+      "finish_stage": "V6"
+    },
+    "M5 13": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M6 01": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M6 02": {
+      "first_stage": "V2",
+      "finish_stage": "V2"
+    },
+    "M6 03": {
+      "first_stage": "V2",
+      "finish_stage": "V6"
+    },
+    "M6 04": {
+      "first_stage": "V5",
+      "finish_stage": "V6"
+    },
+    "M6 05": {
+      "first_stage": "V4",
+      "finish_stage": "V6"
+    },
+    "M6 06": {
+      "first_stage": "V4",
+      "finish_stage": "V6"
+    },
+    "M6 07": {
+      "first_stage": "V4",
+      "finish_stage": "V6"
+    },
+    "M6 08": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M6 09": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M6 10": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M6 11": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    },
+    "M6 12": {
+      "first_stage": "V6",
+      "finish_stage": "V6"
+    }
+  },
+  "notes": [
+    "导航数据用于文档与预算校验，不是应用运行配置。",
+    "first_stage表示开始本阶段切片，finish_stage表示原任务全范围验收，不表示已实现。",
+    "初期manual小用例计入当前工具/API任务，V6补齐Runner与正式规模；学习同一目标工时不重复计算。"
+  ]
+}

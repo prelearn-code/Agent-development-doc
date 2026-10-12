@@ -2,16 +2,68 @@
 
 > 未运行不勾选；降级写原因、影响、补测时间。权威契约见 [repo-structure.md](repo-structure.md)，指标见 [02-MODEL-AND-EVAL.md](02-MODEL-AND-EVAL.md)，数据见 [eval/README.md](eval/README.md)。基础预算450h，含余量520~565h。
 
-当前以OpenSSL/GmSSL封装学习Agent全栈开发。逐步操作和独立练习见[05-UBUNTU-STEP-BY-STEP.md](05-UBUNTU-STEP-BY-STEP.md)，领域验收见[06-CRYPTO-AGENT-SCOPE.md](06-CRYPTO-AGENT-SCOPE.md)。本清单保持未勾选；文档编写不等于应用实现完成。
+当前以OpenSSL/GmSSL封装学习Agent全栈开发。逐步操作和独立练习见[05-UBUNTU-STEP-BY-STEP.md](05-UBUNTU-STEP-BY-STEP.md)，领域验收见[06-CRYPTO-AGENT-SCOPE.md](06-CRYPTO-AGENT-SCOPE.md)。本清单保持未勾选；文档编写不等于应用实现完成。实际顺序V0–V6，专项M前缀是稳定技术索引；当前交付通过不自动勾整目标毕业。
 
-## Phase0（20h）
+## 1. 交付阶段签收
+
+### V0 环境准备
+
+- [ ] P0 01–05真实复测，版本/解释器/lock/请求/首测可定位。
+- [ ] 本人能区分配置、连接、协议和模型错误，V0出口通过。
+
+### V1 核心工具调用
+
+- [ ] M1 01–05/07只读范围与M1 08–13通过，证书/摘要独立对照。
+- [ ] 本人手写Loop、单多调用/失败/预算/NDJSON可解释，已有少量case。
+- [ ] M1 06和写范围留V4，未提前标m1全目标毕业。
+
+### V2 第一版网页闭环
+
+- [ ] 必要DB迁移/角色/短事务/重启与身份、上传、JSON chat/Run/请求幂等通过。
+- [ ] M6 01–02与03文件/证书切片，Windows浏览器可上传→执行→结果/Trace/历史。
+- [ ] 刷新同Run、重复请求、跨用户、非法上传、错误均有真实证据；未做Verifier显示not_run。
+- [ ] SSE/完整六查询/前端专项登记V5/V6，不提前标m2/m6毕业。
+
+### V3 MCP接入
+
+- [ ] M4 07–08与11已有连接刷新：一个Crypto Server复用原业务服务。
+- [ ] 模型提议/MCP请求/handler/Provider/反馈关联，直调与MCP允许/拒绝/失败一致。
+- [ ] 三职责/Resource/Prompt/新端点留V6，不提前标m4-mcp-done。
+
+### V4 审批密码版
+
+- [ ] M1 06往返/认证失败，固定profile/key version/nonce与受控材料通过。
+- [ ] 一种加解密固定审批、服务端复查、intent/账本/产物下载/重复决定通过。
+- [ ] Tool分支Graph/checkpoint、批准/拒绝/过期/变更、执行前/中/后崩溃核对通过；unknown不重跑。
+- [ ] 当前写边界/秘密/结果状态检查有证据，页面恢复pending/真实终态。
+- [ ] 轮换/CSR/签发/≥50工具、完整安全/图专项登记V6；目标1/2全表此时通过才标m1-done。
+
+### V5 知识与可靠性增强
+
+- [ ] 基础RAG后补完整Verifier；三格式/版本/授权/定位/无答案与≥20错20对通过。
+- [ ] Memory来源/改口/删除/隔离/无关防护通过，检索≥50审定题和四组消融齐全。
+- [ ] SSE/前端引用/去重重连同Run通过，当前阶段出口与未完专项登记。
+- [ ] 目标5/6全表通过可标m3-done，不把V5视为全部M5技术毕业。
+
+### V6 完整实验与交付
+
+- [ ] 按00分配补API/DB/全部工具/三职责MCP/Graph/完整安全及前端专项。
+- [ ] 固定工具池后四模型配置各3次，≥50Tool及100–180综合frozen，完整Runner/隔离/cleanup/compare通过。
+- [ ] 16目标全表/A–J/clean部署/备份恢复/综合15h通过，选修不适用有理由。
+- [ ] 所有专项标签按03条件创建，未用小时或单次Demo代替掌握。
+
+## 2. 完整技术专项验收
+
+下面保留全部细项。M标签为技术族，不是实际执行顺序；只有对应整目标所有证据齐全才勾选。目标表、详细步骤和V阶段task导航分别见00/05，预算不重复计算。
+
+### Phase0（20h）
 
 - [ ] 应用独立目录、Git、Python3.12/uv/venv、合法pyproject/lock。
 - [ ] Ollama与qwen3.5:4b能完成最小请求，保存版本/digest与GPU/CPU实测状态。
 - [ ] 配置样例、脱敏日志、测试与lint入口、实际工时记录。
 - [ ] Phase0无需一次装4模型/启动4服务，核心验收通过，phase0-done。
 
-## M1（70h）
+### M1（70h）
 
 - [ ] 目标1：Pydantic ToolResult与schema一致，公开证书解析/授权摘要有独立对照；固定provider入口与资源ID解析。
 - [ ] 空结果成功；unknown tool/参数/输出大小检查；密码材料不回模型，受控加解密有往返与认证失败证据。
@@ -21,7 +73,7 @@
 - [ ] 单步/多步/多调用/失败回传、deadline/token/step预算、重复调用熔断。
 - [ ] 保存原始Trace并回答五问；流式与非流式遵守相同协议/策略并完成相同任务类型，m1-done。
 
-## M2（60h）
+### M2（60h）
 
 - [ ] 目标3：鉴权、资源归属、POST/chat/files、sessions/runs/events/cancel、live/ready。
 - [ ] 流前持久化Run；同client_request_id返回原Run。
@@ -32,7 +84,7 @@
 - [ ] 文件/证书/key元数据按项目与用户隔离；DB/Trace不存私钥或解密文件内容。
 - [ ] 短DB事务不跨外部任务；run/user/session一致性检查，重启数据不丢，m2-done。
 
-## M3（70h）
+### M3（70h）
 
 - [ ] 目标5：PDF/MD/TXT真实样本，扫描页需OCR、复杂表格限制记录。
 - [ ] chunk有版本/hash/定位/project/ACL，业务chunk_id与Qdrant UUID point_id分开。
@@ -43,7 +95,7 @@
 - [ ] Hit/Recall/MRR/证据覆盖/引用有效与支持/正确拒答/误拒答与n都报告。
 - [ ] corpus/index/config冻结，失败用例与延迟分析，m3-done。
 
-## M4（80h）
+### M4（80h）
 
 - [ ] 目标7：ToolSpec与本地policy、密码操作风险、输出schema、幂等retry与预算。
 - [ ] ≥50工具用例允许多解，gold_calls按occurrence表达多次调用，单位SI明确。
@@ -57,7 +109,7 @@
 - [ ] actions账本、幂等键、执行前/中/后崩溃核对；unknown不自动重跑；引入独立worker时补lease/fencing与双worker竞争。
 - [ ] 重连恢复待审批，显式cancel，副作用只执行一次或进入明确unknown，m4-done。
 
-## M5（90h）
+### M5（90h）
 
 - [ ] 目标10（20h）：同用户跨session Memory，不同user/project隔离；短显式偏好不误过滤。
 - [ ] 改口事务、有效hash唯一索引、语义复核、来源/查看/纠正/删除与投毒防护。
@@ -72,7 +124,7 @@
 - [ ] 目标14（20h）：注入/SQL/命令/路径/SSRF/泄密/提权、审批重放、跨用户、MCP/Memory投毒。
 - [ ] 安全判断区分拒绝尝试与真实执行；实际副作用Unauthorized Action Rate=0，m5-done。
 
-## M6（60h）
+### M6（60h）
 
 - [ ] 目标15（30h）：九UI区块、实时状态、刷新/reconnect/审批/cancel正确。
 - [ ] draft token显示未验证；final替换，错误不展示为已验证；安全Markdown渲染。
@@ -83,7 +135,7 @@
 - [ ] 故障恢复不静默重复密码动作，版本化来源/审计完整，冻结scenario回归，m6-done。
 - [ ] **交付验收**：Windows 浏览器从网络打开前端地址即可复现全链路，Windows 侧零安装。
 
-## 文档配套与完整交付
+## 3. 文档配套与完整交付
 
 - [ ] 00每目标表逐行有状态与证据，解释/实现/排错/证据分别检查，未运行不标通过。
 - [ ] 07自绘只读/审批/知识三条序列与信任边界图，State/安全边界本人确定。
@@ -92,7 +144,7 @@
 - [ ] 四仓库同级并独立固定版本；源码/prefix分离，密码仓库不成为文档子目录。
 - [ ] A–J毕业矩阵正常/失败/个人能力齐全；选修不适用有理由，首版缺口未冒充完整版。
 
-## 阶段共同检查
+## 4. 阶段共同检查
 
 - [ ] 学习者独立解释、改一个需求或修一个缺陷，运行证据可定位。
 - [ ] 自己的ADR记录背景/取舍/证据/限制；to-digest有截止时间或已消化。

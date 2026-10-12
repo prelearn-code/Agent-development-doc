@@ -87,3 +87,9 @@ certificate_draft、key_material_draft和crypto_corpus_draft保持unresolved。�
 8. 固定dataset/schema/fixture/corpus/index/environment hash与模型digest；结果一对一配对，缺失、重复、额外和超时不可静默跳过。
 
 后续目标仍为RAG≥50、Tool≥50、综合100–180条逐项审定用例。当前24条草稿仅帮助起步，不包含完整安全回归，也不能替代最终题库和应用运行证据。
+
+## 7. 按交付阶段积累，V6完成正式冻结
+
+V1记录少量证书/摘要/Loop的明确输入输出与失败；V2增加API/幂等/权限；V3直调/MCP对照；V4逐动作审批与故障恢复；V5完成RAG≥50/四组检索及Verifier正误双集、Memory；V6固定完整工具池后完成Tool≥50、100–180综合、隔离Runner/cleanup/配对报告。
+
+M5 09/12是稳定任务ID，草稿从V1开始，正式范围到V6完成；manual小case不冒充Runner或frozen。原schema_version=3、canonical 13工具、人工审定/真实fixture/证据/审批门禁均保持。各V目标和预算见[00](../00-ROADMAP.md)，task切片见[05](../05-UBUNTU-STEP-BY-STEP.md)。

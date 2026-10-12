@@ -128,6 +128,79 @@ for name in ('07-AGENT-SYSTEM-DESIGN.md','08-API-AND-WEB.md','09-DELIVERY-AND-AC
     if name not in (root/'README.md').read_text(encoding='utf-8'):
         failures.append(f'README: guide not indexed {name}')
 
+
+# 交付阶段是唯一时间路径；技术卡与任务编号是稳定索引。
+plan = json.loads((root/'learning-plan.json').read_text(encoding='utf-8'))
+expected_stage_ids = [f'V{i}' for i in range(7)]
+stages = plan['stages']
+stage_ids = [stage['id'] for stage in stages]
+if stage_ids != expected_stage_ids:
+    failures.append('plan: delivery order must be V0 through V6')
+if plan['weekly_hours'] != [20,25] or plan['baseline_hours'] != 450:
+    failures.append('plan: weekly or total learning budget drift')
+if sum(stage['hours'] for stage in stages) != plan['baseline_hours']:
+    failures.append('plan: stage budgets do not sum to baseline')
+if sum(plan['goal_hours'].values()) != plan['baseline_hours']:
+    failures.append('plan: goal budgets do not sum to baseline')
+if set(plan['goal_hours']) != {str(i) for i in range(17)} | {'integration'}:
+    failures.append('plan: missing goal budget')
+for stage in stages:
+    if sum(stage['alloc'].values()) != stage['hours']:
+        failures.append(f"plan: {stage['id']} allocation sum differs from stage budget")
+    if set(stage['alloc']) - set(plan['goal_hours']):
+        failures.append(f"plan: {stage['id']} has unknown goal")
+for goal, hours in plan['goal_hours'].items():
+    if sum(stage['alloc'].get(goal,0) for stage in stages) != hours:
+        failures.append(f'plan: goal {goal} double-counted or missing allocation')
+headers = re.findall(r'^### (目标\d+|Phase 0)：[^\n]*（(\d+)h）',roadmap,re.M)
+for title,hours in headers:
+    goal = '0' if title == 'Phase 0' else title.removeprefix('目标')
+    if plan['goal_hours'].get(goal) != int(hours):
+        failures.append(f'plan: {title} budget differs from goal card')
+if re.findall(r'^## \d+\. (V\d)：',roadmap,re.M) != expected_stage_ids:
+    failures.append('roadmap: delivery chapters not in V0-V6 order')
+step_text = (root/'05-UBUNTU-STEP-BY-STEP.md').read_text(encoding='utf-8')
+if re.findall(r'^## \d+ (V\d) ',step_text,re.M) != expected_stage_ids:
+    failures.append('steps: delivery chapters not in V0-V6 order')
+detail_task_ids = []
+for line in step_text.splitlines():
+    match = re.match(r'^\| (M[1-6] \d{2}) \|',line)
+    if match and len(re.split(r'(?<!\\)\|',line))-2 == 4:
+        detail_task_ids.append(match.group(1))
+if len(detail_task_ids) != 81 or len(set(detail_task_ids)) != 81:
+    failures.append('steps: must retain 81 unique four-column detailed task rows')
+expected_tasks = set(detail_task_ids) | {f'P0 {i:02}' for i in range(1,6)}
+if set(plan['task_stages']) != expected_tasks:
+    failures.append('plan: task navigation differs from detailed guide')
+nav_ids = re.findall(r'^\| ((?:P0|M[1-6]) \d{2}) \| V\d \| V\d \|$',step_text,re.M)
+if len(nav_ids) != 86 or set(nav_ids) != expected_tasks:
+    failures.append('steps: task navigation must cover all 86 task entrances')
+for task, mapping in plan['task_stages'].items():
+    first, finish = mapping['first_stage'], mapping['finish_stage']
+    if first not in stage_ids or finish not in stage_ids:
+        failures.append(f'plan: {task} unknown stage')
+    elif stage_ids.index(first) > stage_ids.index(finish):
+        failures.append(f'plan: {task} finishes before first learning slice')
+    if f'| {task} | {first} | {finish} |' not in step_text:
+        failures.append(f'plan: {task} stage mapping differs from guide')
+for name in ('00-ROADMAP.md','03-LEARNING-ORDER.md','05-UBUNTU-STEP-BY-STEP.md'):
+    content = (root/name).read_text(encoding='utf-8')
+    cumulative = 0
+    for stage in stages:
+        cumulative += stage['hours']
+        row = f"| {stage['id']} {stage['name']} | {stage['hours']}h | {cumulative}h |"
+        if row not in content:
+            failures.append(f'{name}: stage budget/cumulative table differs for {stage["id"]}')
+for name in ('00-ROADMAP.md','03-LEARNING-ORDER.md'):
+    content=(root/name).read_text(encoding='utf-8')
+    for goal,hours in plan['goal_hours'].items():
+        label='Phase 0' if goal=='0' else ('综合验收' if goal=='integration' else '目标'+goal)
+        alloc=[f"{s['id']} {s['alloc'][goal]}h" for s in stages if goal in s['alloc']]
+        row=f"| {label} | {hours}h | {'；'.join(alloc)} | {alloc[-1].split()[0]} |"
+        if row not in content:
+            failures.append(f'{name}: goal slice table differs for {goal}')
+print('Checked V0-V6 order, 450h stage/goal allocation, 81 detailed task rows and 86 navigation entries.')
+
 print(f'Checked {len(markdown)} Markdown files, {links} local links, {python_blocks} Python examples, {json_blocks} JSON examples, {len(tables)} DDL table dependencies, {len(files)} synthetic file sizes, {len(tools)} canonical tools and {sum(mastery_counts.values())} mastery tables.')
 for failure in failures:print('ERROR',failure)
 if failures:raise SystemExit(1)

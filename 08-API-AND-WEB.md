@@ -4,7 +4,7 @@
 
 ## 1. 从最小API开始
 
-学习顺序：live/ready → 非流式chat → sessions/run snapshot → 身份与归属 → 上传 → SSE → 取消 → 审批 → Knowledge/Memory → artifact下载。先curl验证，再用React实现同一接口。FastAPI的请求模型、依赖、错误与响应学习以[官方教程](https://fastapi.tiangolo.com/tutorial/)为入口；不用一次学完全部框架。
+交付顺序：V2身份/归属、live/ready、非流式chat/upload/snapshot和基础页 → V3MCP复用 → V4固定审批/取消/产物下载 → V5知识/Memory/Verifier/SSE → V6全接口与浏览器专项。先curl验证，再用React实现同一接口。FastAPI的请求模型、依赖、错误与响应学习以[官方教程](https://fastapi.tiangolo.com/tutorial/)为入口；不用一次学完全部框架。
 
 首版采用学习用API key鉴权，推荐明确header为`X-API-Key`，由后端映射固定测试用户；如果当前代码字段不同，在实现配置中显式适配。它是学习认证方案，公网部署须补TLS与合适的会话/认证管理。前端不自报可信user_id/role；project/session/file/run只是待授权对象，UUID难猜不是权限。
 
@@ -32,31 +32,31 @@
 
 | 阶段 | 方法/路径 | 最小请求或查询 | 成功返回/验收重点 |
 |---|---|---|---|
-| M2 | GET /health/live | 无 | 进程存活，不等同ready |
-| M2 | GET /health/ready | 无 | 当前启用能力与必要依赖可用；失败503 |
-| M2 | POST /sessions | project_id、title可选 | 授权session ID |
-| M2 | GET /sessions | project_id、cursor、limit | 仅本人授权会话，稳定分页 |
-| M2 | GET /sessions/{id}/messages | cursor、limit | 顺序消息与Run关联，秘密不回传 |
-| M2 | POST /chat | project_id、session_id、client_request_id、message、resource_ids、stream | 非流式结果或SSE；流前Run已持久化 |
-| M2 | GET /runs | project_id、session_id/status可选、cursor、limit | 仅授权Run历史 |
-| M2 | GET /runs/{id} | 无 | snapshot、步骤/动作摘要、pending审批、final、verifier |
-| M2 | GET /runs/{id}/events | after、limit可选 | SSE恢复，同Run event_id递增 |
-| M2 | POST /runs/{id}/cancel | 原因可选 | 202取消请求或已终态快照，不伪报外部停止 |
-| M2 | POST /files | multipart file、project_id、purpose | 201 file ID/size/hash/status，校验后发布 |
-| M2 | GET /files | project_id、cursor、limit | 授权文件元数据，无服务端真实路径 |
-| M2/M4 | GET /certificates | project_id、cursor、limit | 已解析证书元数据与检查状态 |
-| M2/M4 | GET /keys | project_id、cursor、limit | 用途/状态/版本元数据，不含密钥材料 |
-| M4 | GET /keys/{id}/versions | cursor、limit | 授权版本历史，轮换前后可核对 |
-| M4 | POST /runs/{id}/approve | approval_id、action_hash、decision | 原子决定与snapshot；不直接由API重跑Provider |
-| M4 | GET /artifacts/{id} | 无 | 格式/大小/hash/action/key version与可下载状态 |
-| M4/M6 | GET /artifacts/{id}/download | 无 | 授权文件流；敏感解密产物遵守当前权限/策略 |
-| M3 | POST /knowledge/documents | 授权file_id、project_id | 202入库任务/文档，staging状态 |
-| M3 | GET /knowledge/documents | project_id、cursor、limit | 版本与active/failed/needs_ocr状态 |
-| M3 | GET /knowledge/documents/{id}/chunks/{chunk_id} | document_version | 授权源片段与真实locator，已撤权拒绝 |
-| M3 | DELETE /knowledge/documents/{id} | 可选expected_version | 删除/撤回发布任务状态，多索引同步 |
-| M5 | GET /memories | project_id、cursor、limit | 本人有效Memory与来源摘要 |
-| M5 | PATCH /memories/{id} | content、expected_content_hash | 事务纠正，旧值失效，可追溯 |
-| M5 | DELETE /memories/{id} | expected_content_hash | 删除后不再注入，按隐私策略清理来源 |
+| V2 | GET /health/live | 无 | 进程存活，不等同ready |
+| V2 | GET /health/ready | 无 | 当前启用能力与必要依赖可用；失败503 |
+| V2 | POST /sessions | project_id、title可选 | 授权session ID |
+| V2 | GET /sessions | project_id、cursor、limit | 仅本人授权会话，稳定分页 |
+| V2 | GET /sessions/{id}/messages | cursor、limit | 顺序消息与Run关联，秘密不回传 |
+| V2 JSON/V5 SSE | POST /chat | project_id、session_id、client_request_id、message、resource_ids、stream | 非流式结果或SSE；流前Run已持久化 |
+| V2 | GET /runs | project_id、session_id/status可选、cursor、limit | 仅授权Run历史 |
+| V2 | GET /runs/{id} | 无 | snapshot、步骤/动作摘要、pending审批、final、verifier |
+| V5 | GET /runs/{id}/events | after、limit可选 | SSE恢复，同Run event_id递增 |
+| V4；V5流回归 | POST /runs/{id}/cancel | 原因可选 | 202取消请求或已终态快照，不伪报外部停止 |
+| V2 | POST /files | multipart file、project_id、purpose | 201 file ID/size/hash/status，校验后发布 |
+| V2 | GET /files | project_id、cursor、limit | 授权文件元数据，无服务端真实路径 |
+| V2元数据/V4写 | GET /certificates | project_id、cursor、limit | 已解析证书元数据与检查状态 |
+| V2元数据/V4写 | GET /keys | project_id、cursor、limit | 用途/状态/版本元数据，不含密钥材料 |
+| V4 | GET /keys/{id}/versions | cursor、limit | 授权版本历史，轮换前后可核对 |
+| V4 | POST /runs/{id}/approve | approval_id、action_hash、decision | 原子决定与snapshot；不直接由API重跑Provider |
+| V4 | GET /artifacts/{id} | 无 | 格式/大小/hash/action/key version与可下载状态 |
+| V4 | GET /artifacts/{id}/download | 无 | 授权文件流；敏感解密产物遵守当前权限/策略 |
+| V5 | POST /knowledge/documents | 授权file_id、project_id | 202入库任务/文档，staging状态 |
+| V5 | GET /knowledge/documents | project_id、cursor、limit | 版本与active/failed/needs_ocr状态 |
+| V5 | GET /knowledge/documents/{id}/chunks/{chunk_id} | document_version | 授权源片段与真实locator，已撤权拒绝 |
+| V5 | DELETE /knowledge/documents/{id} | 可选expected_version | 删除/撤回发布任务状态，多索引同步 |
+| V5 | GET /memories | project_id、cursor、limit | 本人有效Memory与来源摘要 |
+| V5 | PATCH /memories/{id} | content、expected_content_hash | 事务纠正，旧值失效，可追溯 |
+| V5 | DELETE /memories/{id} | expected_content_hash | 删除后不再注入，按隐私策略清理来源 |
 
 文件下载不允许任意path参数；原始文件是否可下载须另定policy，不自动提供通用fs读取。Provider动作通过Agent→Executor，不增加绕过审批的`/encrypt`裸路由。学习用后台不提供任意SQL控制台、私钥导出或系统信任修改按钮。
 
@@ -138,7 +138,7 @@ React基础按[官方Learn](https://react.dev/learn)学习组件、状态、effe
 | Steps/Tool Calls | 节点、调用、拒绝、结果、耗时 | proposed/executed/denied各自可辨 |
 | Approval | 固定动作详情、批准/拒绝、过期/冲突 | 刷新/双击/变更不二次授权 |
 | Sources/Verifier | 引用与检查项/violations | 草稿/已验证/未验证区别，N/A解释 |
-| Memory | 查看、纠正、删除与来源摘要 | 删除后不注入，跨用户不可见 |
+| V2 | 查看、纠正、删除与来源摘要 | 删除后不注入，跨用户不可见 |
 | Run History | 运行/失败/pending/unknown筛选与恢复 | 重连同Run，显式cancel，失败记录可定位 |
 | Delivery信息 | 安全的版本/能力与限制摘要 | 不公开秘密配置；证书未检查项如实显示 |
 
@@ -162,3 +162,15 @@ Markdown、文件名和工具输出安全渲染；禁用危险原始HTML，外�
 | 下载越权/撤权 | 当前授权重新检查 | 可理解拒绝，不能凭旧链接绕过 |
 
 完成证据：同一run_id的curl/API响应、DB状态、SSE与浏览器行为；UI截图只能作为辅助。系统与本人TS/异步理解分别按00标准验收，不只检查页面好看。
+
+## 9. 提前做网页时的功能切片
+
+| 阶段 | 页面必需 | 本次可以留待后续 |
+|---|---|---|
+| V2 | 教学身份、上传、JSON提问、公开结果/工具Trace、Run历史/刷新/错误 | SSE、审批、密钥秘密/写工具、引用/Memory |
+| V3 | 同页面调用经MCP，Trace能区分协议层 | 三Server管理界面 |
+| V4 | key版本元数据、固定批准/拒绝/过期/冲突、artifact下载、pending/unknown | RAG引用、完整事实Verifier |
+| V5 | SSE去重/重连、资料/引用、完整检查与Memory纠正删除 | 全量模型实验展示 |
+| V6 | 全页面与异步清理/断线/取消/安全渲染/下载撤权专项 | 企业SSO、复杂设计系统 |
+
+先已有功能的JSON/snapshot，后SSE。V2未做Verifier显示not_run，V4仅显示已做状态检查与未检查项，V5才展示完整六检查；不会因为界面先存在就冒充所有功能完成。所有开放接口从第一天鉴权/归属/限额/错误和幂等验证，MCP handler不能提供绕过审批的写入口。
