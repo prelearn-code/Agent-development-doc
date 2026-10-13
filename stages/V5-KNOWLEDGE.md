@@ -2,15 +2,52 @@
 
 本阶段基础预算**105h**；实现成果：基础RAG/引用、完整Verifier、Memory、检索实验与SSE。先读实现目标与当前切片，再执行详细任务；完成标准以实际证据为准。
 
-| 入口问题 | 本阶段安排 |
-|---|---|
-| 从哪里开始 | 按当前切片与本章分步操作扩展已有Demo |
-| 首次进入的任务 | M2 06、M2 07、M3 01、M3 02、M3 03、M3 04、M3 05、M3 06、M3 07、M3 08、M3 09、M3 10、M3 11、M3 12、M3 13、M5 01、M5 02、M5 03、M5 04、M6 04；可能只实现本阶段范围，完整版完成位置见任务索引 |
-| 完整技术目标卡 | 目标5、10、6；跨阶段项目以后补齐，不将全表当当前前置 |
-| 如何判断完成 | 正常/失败/权限与真实结果可核对，本人能解释、改需求和排错；本章出口清单全部有证据 |
-| 按需参考 | [02-MODEL-AND-EVAL.md](../reference/02-MODEL-AND-EVAL.md)；[07-AGENT-SYSTEM-DESIGN.md](../reference/07-AGENT-SYSTEM-DESIGN.md)；[repo-structure.md](../reference/repo-structure.md) |
+## 实现目标与学习结果要求
 
-每个技术目标的第一张表说明能力深度，紧接的实践表说明具体练习；两者在此集中阅读。通用周计划/任务卡见[学习总览](../LEARNING-PATH.md)，原M1–M6查[任务索引](../reference/TASK-INDEX.md)。
+让Agent在需要操作依据时检索授权资料，加入版本引用与本人Verifier，再增加可追溯Memory、四组检索实验和浏览器SSE。RAG是条件性分支，不能替代实际密码结果或让每条摘要请求都经过知识库。
+
+| 需要学习的技术 | 学习结果要求 | 独立实现与排错证据 |
+|---|---|---|
+| PDF/MD/TXT解析与版本化chunk | 识别真实定位、needs_ocr与解析失败；保存来源/hash/版本/ACL | 原文对照、三格式样本、更新删除和staging→active失败恢复 |
+| Dense、BM25、RRF与rerank | 在同一授权候选与冻结语料上做四组对照，正确计算检索指标 | ≥50人工审定RAG题、分母/n、无答案与漏召回分别报告 |
+| Citation、Claim与本人Verifier | 检查来源存在/定位/支持、实体/单位/派生值与必要工具最终状态 | ≥20正确/≥20错误，误报漏报与unknown/N/A可解释；AI只审查核心 |
+| History、State、Knowledge与Memory | 区分生命周期与权威性，Context有限且不把历史当当前资源状态 | 真实任务逐项标来源、预算和秘密边界 |
+| Memory来源、改口、删除与并发 | 同user/project跨session偏好可追溯、可纠正删除且按权限读取 | 显式短偏好、重复/矛盾、并发冲突、删除/跨用户/投毒反例 |
+| SSE、持久事件、snapshot与重连 | 分开模型NDJSON和浏览器事件流，state/event提交后发送并按游标去重 | UTF8/CRLF/半帧、重复事件、刷新/断线同Run恢复，不重POST |
+| 引用/检查/Memory前端与可选GPU环境 | 安全展示真实来源与验证状态，按需使用检索依赖和实测GPU | 原片段鉴权、Verifier失败、Memory纠正删除、真实资源/版本记录 |
+
+## 必须独立回答的关键问题
+
+这些问题必须由你结合自己的实现作答，AI只审查。记录在代码仓库docs/progress.md，写清场景、自己的理由、真实证据与未覆盖边界；只背定义或复制AI答案不算通过。
+
+| 编号 | 必须自己回答的问题 | 回答达到标准所需的说明或证据 |
+|---|---|---|
+| Q01 | 为什么当前密码工具结果与操作文档是不同证据？ | 用证书检查+解释规则的同一请求区分来源和结论 |
+| Q02 | 什么请求需要RAG，什么请求可以只调工具？ | 给出自己的路线和失败处理，不把检索当固定前置 |
+| Q03 | 扫描PDF、普通PDF、MD和TXT怎样分别定位？ | 真实样本、页码/章节/字符与needs_ocr处理 |
+| Q04 | chunk_id、document_version、content_hash与Qdrant point_id有什么区别？ | 一个真实片段到原文/版本/索引记录的映射 |
+| Q05 | 资料更新、删除或入库失败后，旧索引与引用怎么处理？ | 解释staging/active、版本一致性和实际恢复证据 |
+| Q06 | ACL过滤应该在哪里发生？多路检索和rerank能否扩大权限？ | 同一授权集合与跨用户拒绝的实测对照 |
+| Q07 | Dense、BM25、RRF与rerank各改变哪一部分？ | 四组实验固定项、唯一变化、输入与输出说明 |
+| Q08 | Hit、Recall与MRR的分母分别是什么？无答案题如何处理？ | 自己的公式、n和一个手工核对例子 |
+| Q09 | top-K没有命中为什么不能直接把问题标成无答案？ | 原文与多路候选的人工可答性审定证据 |
+| Q10 | 一个引用存在、位置正确和支持结论，是同一件事吗？ | 三类反例与本人Verifier的不同判定 |
+| Q11 | 为什么只比较回答中的数字集合无法验证事实？ | 展示实体错绑/单位/来源/派生量的正反例 |
+| Q12 | Verifier的unknown、skipped、N/A和fail怎么区分？ | 自己的必需检查规则、合理无引用回答与失败展示 |
+| Q13 | Verifier漏报与误报如何量化，为什么要同时准备正确和错误集？ | ≥20+20的混淆结果、TPR/FPR与本人误判分析 |
+| Q14 | History、Run State、Memory与Knowledge分别何时读取和失效？ | 标注一次任务的四来源与可信边界，不能从旧聊天断言现状 |
+| Q15 | Memory怎样证明偏好来自该用户，而不是检索文档或攻击文本？ | 来源、确认策略、显式短偏好与投毒拒绝证据 |
+| Q16 | 用户改口、重复表达或删除偏好时怎样保持一致？ | 解释失效旧记录/新记录/有效唯一性与删除后注入验证 |
+| Q17 | 为什么Memory content_hash不能作为授权凭据？并发修改怎样处理？ | 归属与expected_content_hash校验、409和真实状态 |
+| Q18 | 模型NDJSON与浏览器SSE为什么必须分开解析？ | 分别画网络块/记录/事件，给切块与UTF8反例 |
+| Q19 | event_id、run_id、snapshot和after游标怎样一起恢复页面？ | 同Run刷新/断线/重复事件证据，不发新POST |
+| Q20 | 事件已过保留窗口或游标不属于该Run时怎样处理？ | 错误与快照重建策略，不能悄悄重跑原任务 |
+| Q21 | 草稿token、final、verify与done在页面上各代表什么？ | 真实状态与失败/未验证展示，不能网络关闭就显示完成 |
+| Q22 | 怎样证明检索和Memory增强改善了系统而非掩盖工具失败？ | 同一任务的来源/工具/检查结果与固定变量对照 |
+
+## 分步任务与技术掌握标准
+
+先按当前切片实现最小输入输出，再补齐技术表。本阶段首次运行、正常/失败/权限、本人解释与独立修改分别验收；未实际运行不签收。
 
 **当前105h**：目标5基础RAG35h、目标12剩10h、目标10 Memory20h、目标6检索35h、目标3 SSE5h。按以下顺序逐项加；知识检索是条件性分支，摘要/加密不必每次经过RAG。
 
@@ -135,7 +172,7 @@
 
 **进入条件**：dense baseline可运行。
 
-**Agent目标**：用实测选择检索策略，避免堆组件却不能证明收益。公式见02。 对应详细任务：**M3 08–13**。
+**Agent目标**：用实测选择检索策略，避免堆组件却不能证明收益。指标公式见本阶段检索指标章节。 对应详细任务：**M3 08–13**。
 
 **技术点掌握程度标准**
 
@@ -184,7 +221,7 @@
 
 完整四组为 dense、sparse、dense+sparse+RRF、再加 rerank。reranker 可先 CPU；GPU 是单独环境配置，不能未验证 CUDA 就声称 GPU 已启用。不要用本机实验结论保证 Hybrid 一定更好。
 
-**指标与通过条件**：正样本报 Hit@5/10、Recall@5/10、MRR@10、EvidenceCoverage；无答案样本报正确拒答率，正样本另报误拒答率；引用有效性、引用支持性和答案关键事实分别统计。每项带适用样本数。计算实现应与手工小例子一致，四组结果完整且能定位失败案例；**质量百分比先测 baseline，再制定改进目标**，不凭空要求 4B 达到 95%。公式沿用 [02-MODEL-AND-EVAL.md](../reference/02-MODEL-AND-EVAL.md)。
+**指标与通过条件**：正样本报 Hit@5/10、Recall@5/10、MRR@10、EvidenceCoverage；无答案样本报正确拒答率，正样本另报误拒答率；引用有效性、引用支持性和答案关键事实分别统计。每项带适用样本数。计算实现应与手工小例子一致，四组结果完整且能定位失败案例；**质量百分比先测 baseline，再制定改进目标**，不凭空要求 4B 达到 95%。公式沿用 [模型与实验协议](V6-DELIVERY.md#eval-1)。
 
 dev 用于调 chunk/top-K/rerank 参数；test 不参与调参。近义问题和共享来源/模板的组整体划分，不把同一问法变体放两边。如果小语料导致所有题都连成一个来源组，先增加独立文档组或将其全部用于 dev，再另备 test；不要悄悄取消防泄漏规则。
 
@@ -200,7 +237,170 @@ dev 用于调 chunk/top-K/rerank 参数；test 不参与调参。近义问题和
 
 资料入库/授权/更新失败边界通过；引用定位与支持有证据，Verifier双集完整，Memory来源/纠正删除/隔离通过，≥50RAG与四组消融齐全，SSE正常/错误/重连有真实记录。目标5/6通过可标m3-done，目标3/15的最终专项在V6补齐。下一步V6，网页已在V2运行，不重新从零做UI。
 
+## 本阶段的接口与实践细节
+
+以下内容属于本阶段，按任务用到的部分查阅；涉及后续能力的字段仅作为扩展合同，当前切片不要求提前全部实现。
+
+<a id="env-6"></a>
+<a id="env-6-6-pytorch--blackwellv5检索实验按需"></a>
+### PyTorch / Blackwell（V5检索实验按需）
+
+NVIDIA 驱动显示的 CUDA Version 是驱动支持上限，不证明 wheel 包含 sm_120 的代码。Ollama 与预编译 PyTorch 一般不需要 nvcc；自行编译扩展另行安装 Toolkit。
+
+不要使用旧的 cu124 命令。选择支持 RTX 50 系的官方 wheel，固定 PyTorch 版本、CUDA 构建与依赖。**兼容起点示例**为 torch 2.7.1 + cu128，代表历史可用组合而非“最新版本”；实际通过后才锁定。当前安装也可按官网选支持 Blackwell 的更新稳定版，再重新验证，不能悄悄覆盖实验环境。
+
+```bash
+uv pip install "torch==2.7.1" --index-url https://download.pytorch.org/whl/cu128
+python -c "import torch; assert torch.cuda.is_available(); x=torch.randn(256,256,device='cuda'); y=x@x; torch.cuda.synchronize(); print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0), torch.cuda.get_device_capability(0), float(y.mean()))"
+```
+
+该一次性诊断命令之后必须把通过的依赖与源索引写入 pyproject/lock，防止下次 uv sync 替换 CUDA 构建。还要跑一对真实 reranker 输入；仅 `is_available()` 不足以验收。[PyTorch 2.7 Blackwell 支持](https://pytorch.org/blog/pytorch-2-7/)、[官方安装选择器](https://pytorch.org/get-started/locally/)
+
+<a id="contract-6"></a>
+<a id="contract-6-6-api-与-sse"></a>
+### API 与 SSE
+
+本节定义事件与状态的工程合同；完整HTTP端点/错误/前端恢复见[API合同](V2-WEB.md#api-1)，运行职责见[Agent运行机制](V1-CORE-DEMO.md#agent-1)。接口表是目标设计，应用完成需OpenAPI与真实合同验收。
+
+POST /chat 返回/关联 run_id，支持 stream=false JSON 和 stream=true SSE。GET /runs/{id} 返回 status、steps、actions、approval、final_answer、verifier；GET /runs/{id}/events?after={event_id} 支持恢复事件，POST /runs/{id}/cancel 显式取消。文件/会话/Memory/事件全部鉴权与资源校验。
+
+所有事件 envelope：schema_version=1、event_id、run_id、timestamp、payload。event_id 为持久化序号，同一 Run 严格递增，允许全局间隙。响应中的 SSE id 与 envelope event_id 一致；客户端去重。事件和对应 DB 状态在同一短事务提交后才发送，避免收到事件却读不到状态。
+
+唯一事件枚举：run_start、step、tool_call、tool_result、approval_required、token、verify、final、done、error。
+
+```text
+id: 101
+event: approval_required
+data: {"schema_version":1,"event_id":101,"run_id":"<uuid>","timestamp":"2026-10-10T00:00:00Z","payload":{"approval_id":"<uuid>","action_id":"<uuid>","action_hash":"<sha256>","tool_id":"encrypt_file","arguments":{"file_id":"<uuid>","key_id":"<uuid>","profile":"aes-gcm-v1"},"expires_at":"2026-10-10T00:15:00Z"}}
+
+```
+
+step 有 step_id/index/status；tool_call/tool_result 有 action_id/call_id/status；token 有 text/draft=true；verify 有 passed/checks/violations；final 有 answer/claims/citations/verification_status；done 有终态 status/计量；error 有 code/message/retryable/fatal。必要的 running→终态事件成对。token 是未验证草稿，final 才替换为最终答案。
+
+fatal error 后持久化 done(failed/cancelled) 并结束；非致命 error 可后续恢复。审批中断时可以关闭传输但 Run 留 awaiting_approval，不能发 done(completed)。heartbeat 使用 SSE 注释，不作为业务事件。parser 按 SSE 空行组帧，处理 CRLF/多 data 行/UTF-8 跨块；发送器把 JSON 编码成单行。
+
+disconnect_policy 在 Run 创建时保存：M2 简单同步任务默认 cancel；持久化审批/后台任务 detach。detach 流断开不取消动作；重连读取 events 和 snapshot，不重新 POST。保留窗口之外返回明确 event_history_expired 并提供 snapshot。Run events 不要求永久保留所有 token，过期状态须有快照和明确恢复规则。
+
+<a id="contract-7"></a>
+<a id="contract-7-7-证据引用与-verifier"></a>
+### 证据、引用与 Verifier
+
+chunk payload：业务 chunk_id、point_id(UUID)、document_id/version、content_hash、project_id、ACL、page_start/page_end 或 section/char_start/char_end。检索权限在 dense/sparse 候选前执行，所有路线一致。Qdrant point_id 与业务引用 ID 分离。[Qdrant point IDs](https://qdrant.tech/documentation/manage-data/points/)
+
+index manifest 记录 corpus/parse/chunk/embed/BM25/collection 版本及 hash；入库 staging 完成后发布 active manifest，旧 Run 固定读原版本。删除/权限撤销恢复前再校验，访问权限优先于复现；必要时返回 evidence_unavailable。
+
+Citation={source_ref,document_version,chunk_id,locator,claim_ids}。locator 用 PDF 实际页区间、Markdown section/字符区间；不允许统一 ±1 页。存在性、定位正确性、语义支持性、事实覆盖分别报告；没有引用的非 RAG 闲聊/合理拒答为 N/A。
+
+Claim={claim_id,subject,metric,value,unit,source_refs,derivation?}。派生量 derivation 记录输入 claim/ref、公式、计算工具版本、容差。Verifier 确定性核对绑定关系与单位，LLM/NLI 辅助语义判断。source 支持不证明真实世界数据正确，synthetic fixture 永远只证明工程行为。
+
+VerifierReport={passed,checks,violations,unsupported_claim_rate?,duration_ms}，violations 含 check/type/severity/detail/found/expected?。未知正确答案时 expected 可以缺省，但必须给修复方向，不能编造期望值。必需项 skipped/unknown 不能当 pass；unsupported_claim_rate 无事实断言时 N/A。failed 后可限次重写或输出明确未验证结果，不能展示为已验证。
+
+<a id="api-5"></a>
+<a id="api-5-5-sse合同与重连"></a>
+### SSE合同与重连
+
+事件只有结构文档枚举的10种：run_start、step、tool_call、tool_result、approval_required、token、verify、final、done、error。envelope统一schema_version/event_id/run_id/timestamp/payload，SSE id与event_id一致。state和event同一短事务提交后发送。网络分块不是事件，发送器JSON为单行，客户端按空行组帧，支持CRLF/多data行/UTF-8跨块。
+
+| 事件 | UI用途 | 必须遵守的语义 |
+|---|---|---|
+| run_start | 关联Run与运行状态 | 去重后不新建第二任务 |
+| step | 显示节点与状态 | 不把计划步骤当已经完成 |
+| tool_call/tool_result | 提议/执行/拒绝/失败与结果摘要 | action/call关联，不只显示工具名称 |
+| approval_required | 显示固定动作和决定入口 | 不自动同意，不用最新聊天重算参数 |
+| token | 流式草稿 | 明示未验证，可随后替换 |
+| verify | 检查、violations与修复中状态 | 必需unknown不是pass |
+| final | 最终回答与引用/验证状态 | 替换草稿，不把失败验证包装成功 |
+| done | 终态与计量 | pending审批关闭连接不能发completed |
+| error | 可理解失败与恢复指引 | fatal后有真实done终态，非fatal可能继续 |
+
+重连步骤：保留run_id和最后应用event_id → GET snapshot核对权限/终态/审批 → GET events?after=游标读取严格大于游标的事件 → 去重应用 → 保持同Run。若快照last_event_id已覆盖之前事件，可按实现的快照版本跳过已反映状态；需要聊天草稿恢复时用持久draft_ref，不假设永久保留所有token。
+
+游标不属于该Run或格式无效报明确错误；保留窗口已过返回410 event_history_expired和snapshot地址，UI从快照重建。heartbeat是SSE注释，不占业务event_id。禁止把网络关闭当done或默认取消detach任务。
+
+初版POST流与恢复GET流均使用fetch携带认证header；原生EventSource不能随意设置自定义header，不要把API key塞URL。若改cookie方案，独立处理凭据和CSRF。
+
+<a id="eval-2"></a>
+<a id="eval-2-2-操作知识库-rag-指标"></a>
+### 操作知识库 RAG 指标
+
+令 Q+ 为有可回答且完整 gold 的问题，Q- 为明确无答案问题。R_K(q) 为 top-K 去重结果，G(q) 为 gold 集合；K、候选级/最终级与 corpus/chunk 版本均写报告。
+
+```text
+Hit@K = mean_q[ |R_K(q) ∩ G(q)| > 0 ]
+Recall@K = mean_q[ |R_K(q) ∩ G(q)| / |G(q)| ]       q 属于 Q+
+MRR@K = mean_q[ 1 / 首个 relevant rank ]           无命中记0
+EvidenceCoverage@K = mean_q[已覆盖必要事实槽数 / 必要事实槽数]
+```
+
+chunk/doc 两级分别计算；同文档多个 chunk 的 doc ranking 按首次出现去重。多证据任务不能用 Hit 替代 Recall；gold 若是不完整相关性标注，报告为 annotated Recall，不声称全语料 Recall。相关性与答案所需证据槽是不同标注，必要事实槽允许多个等价 chunk。
+
+Q- 不进入正样本 Recall/MRR 分母：报告 Correct Refusal Rate（合理拒答/无答案样本）、False Refusal Rate（误拒答/可回答样本）与样本数。真实存在答案但检索失败仍是正样本失败，不能改标为 no_answer。[信息检索 Recall 定义](https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-unranked-retrieval-sets-1.html)
+
+引用分别报告：Citation Validity（存在、版本、授权和定位有效比例）、Citation Support（引用支持其绑定断言比例）、Claim Citation Coverage（需要引用的事实有有效支持比例）。支持性判断使用固定 Judge/NLI + 人工抽检。页码按证据真实区间，不统一放宽 ±1。要求引用却没有引用记失败；合法无引用任务记 N/A，不能统一记0。
+
+Faithfulness = 被证据支持的原子事实断言/全部原子事实断言；Answer Correctness 按关键事实槽、数值容差、单位与期望结论判定。空分母记 N/A；无事实的空回答还要受任务成功谓词约束，不能因 Faithfulness N/A 自动通过。
+
+<a id="agent-5"></a>
+<a id="agent-5-5-context四种来源不要混用"></a>
+### Context：四种来源不要混用
+
+| 来源 | 保存什么 | 生命周期/读取范围 | 权威性与限制 |
+|---|---|---|---|
+| History | 用户/模型/工具的会话消息 | 当前授权session，按预算截断 | 是对话历史，模型旧回答不是资源现状 |
+| Run State | 当前节点、预算、pending action、结果引用 | 一次run/checkpoint；版本化 | 恢复控制流；真实副作用以账本/Provider核对 |
+| Memory | 用户偏好与可追溯事实候选 | 按user/project跨session，可纠正删除 | 不保存秘密，不把文档命令当用户偏好 |
+| Knowledge | 经授权的操作资料及chunk | corpus/version/index/ACL | 支持知识结论，不证明当前证书可信或密钥有效 |
+
+Context预算包括system、用户问题、工具schema、历史、Memory、检索证据、工具结果、预留输出。每轮记录实际prompt/completion计量与剩余预算。超长结果存blob引用，只放必要摘要；摘要不能删除资源版本、单位、否定条件和待审批动作。压缩是独立实验变量，不能在比较模型时偷偷改变。
+
+**练习**：在一次“检查证书并解释风险”中标注哪些来自证书当前解析、哪些来自规范、哪些来自用户偏好。通过标准：不靠历史或Memory宣布证书当前有效。
+
+<a id="agent-10"></a>
+<a id="agent-10-10-verifiertrace与可观测性"></a>
+### Verifier、Trace与可观测性
+
+Verifier读取真实工具最终状态、事实来源与Citation，不能只在回答里搜索数字。事实绑定subject/metric/value/unit/source；派生值记录输入与计算依据。引用的存在、定位、支持分别判定。必需检查unknown/skipped不能当pass；无引用闲聊/合理拒答可N/A。误报与漏报使用≥20正确/20错误双集，实验指标定义见V6。
+
+Trace同时记录提议、拒绝、执行与结果，不把它们合并。关联request_id/run_id/step_id/action_id/call_id与event_id，测total与各段耗时，人工审批等待单列。只保存必要脱敏参数和摘要；模型thinking如记录须同样审查敏感信息与访问权限。
+
+**排错顺序**：前端快照/事件 → API身份/Run → 模型原始调用 → registry/schema → policy/approval → action账本 → Provider产物 → Claim/Citation → Verifier。按证据定位，不因模型回答错就先换模型。
+
+<a id="full-m3"></a>
+<a id="full-m3-m370h"></a>
+#### M3（70h）
+
+- [ ] 目标5：PDF/MD/TXT真实样本，扫描页需OCR、复杂表格限制记录。
+- [ ] chunk有版本/hash/定位/project/ACL，业务chunk_id与Qdrant UUID point_id分开。
+- [ ] staging→active索引发布；重复入库、更新/删除、失败恢复一致。
+- [ ] dense/sparse/rerank/引用在服务端遵守相同授权。
+- [ ] 目标6：dense/BM25/RRF/rerank四组消融，rewrite另开关。
+- [ ] ≥50条审定RAG问题，正样本与无答案分开；gold从源文档和多路候选审定。
+- [ ] Hit/Recall/MRR/证据覆盖/引用有效与支持/正确拒答/误拒答与n都报告。
+- [ ] corpus/index/config冻结，失败用例与延迟分析，m3-done。
+
+<a id="rag-drafts"></a>
+<a id="rag-drafts-密码工具操作知识检索起步草稿"></a>
+## 密码工具操作知识检索起步草稿
+
+本页与[JSONL草稿](../eval/seed-rag-questions.jsonl)对应。问题都围绕本项目的工具、操作规则和能力范围。当前8题仅供起步，不代表M3要求的至少50题已经完成；来源入库、gold chunk和必要事实槽需逐条人工核对。
+
+| ID | 问题 | 预期可答性 | 起步来源 |
+|---|---|---|---|
+| rag-001 | 解析证书成功是否说明证书链可信？ | answerable | [V1证书结果契约](V1-CORE-DEMO.md#crypto-6.3) |
+| rag-002 | 系统OpenSSL CLI和Python密码包后端为什么要分别记录版本？ | answerable | [V1 OpenSSL能力](V1-CORE-DEMO.md#crypto-3.1) |
+| rag-003 | 同一密钥版本下nonce为什么必须由服务端管理唯一性？ | answerable | [V4认证加密](V4-APPROVAL-CRYPTO.md#crypto-6.1) |
+| rag-004 | 修改认证数据后，解密应怎样处理输出文件？ | answerable | [V4认证加密](V4-APPROVAL-CRYPTO.md#crypto-6.1) |
+| rag-005 | 证书验证应记录哪些时钟、域名、用途和信任根条件？ | answerable | [V1证书结果契约](V1-CORE-DEMO.md#crypto-6.3) |
+| rag-006 | 轮换后旧密文应关联哪个密钥版本？ | answerable | [V4 keystore版本](V4-APPROVAL-CRYPTO.md#crypto-5) |
+| rag-007 | 签名验证通过与签名者身份可信有什么区别？ | answerable | [V6签名验签](V6-DELIVERY.md#crypto-6.2) |
+| rag-008 | 未收录的HSM型号X，其接口超时默认值是多少？ | unanswerable | 语料覆盖需审定 |
+
+准备索引后填写[证据清单](../eval/evidence-manifest.template.json)和[gold映射](../eval/gt-chunk-ids.template.jsonl)，再把真实chunk、事实槽与定位写回记录。Markdown来源使用章节/字符定位；页码仅用于实际PDF。无答案题也须在实际语料中核对，不以top-K没命中作为无答案依据。冻结流程见[评测说明](V6-DELIVERY.md#dataset-1)。
+
 ## 本阶段签收清单
+
+- [ ] 本阶段学习技术表逐项有本人解释、独立实现/修改和失败验证证据。
+- [ ] Q01–Q22已由本人结合实现作答，证据与未覆盖边界记入docs/progress.md；AI仅审查。
 
 - [ ] 基础RAG后补完整Verifier；三格式/版本/授权/定位/无答案与≥20错20对通过。
 - [ ] Memory来源/改口/删除/隔离/无关防护通过，检索≥50审定题和四组消融齐全。

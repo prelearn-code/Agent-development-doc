@@ -58,7 +58,8 @@ for path in markdown:
 for path in root.rglob('*.json'):
     json.loads(path.read_text(encoding='utf-8'))
 
-ddl_text = (root/'reference/repo-structure.md').read_text(encoding='utf-8')
+ddl_text = (root/'stages/V2-WEB.md').read_text(encoding='utf-8')
+tool_contract_text = (root/'stages/V1-CORE-DEMO.md').read_text(encoding='utf-8')
 ddl = re.search(r'```sql\n(.*?)```',ddl_text,re.S).group(1)
 tables = []
 for match in re.finditer(r'CREATE TABLE (\w+) \((.*?)\n\);',ddl,re.S):
@@ -87,13 +88,13 @@ if not fixture_map['certificate_draft']['resolved'] and fixture_map['certificate
     failures.append('fixture: unresolved certificate unexpectedly has a live path')
 schema = json.loads((root/'eval/dataset.schema.json').read_text(encoding='utf-8'))
 tools = set(schema['properties']['allowed_tool_plans']['items']['items']['enum'])
-canonical = re.search(r'canonical tools：(.*?)。', ddl_text).group(1)
+canonical = re.search(r'canonical tools：(.*?)。', tool_contract_text).group(1)
 if set(canonical.split('、')) != tools:
     failures.append('schema: canonical tools differ from project engineering contract')
 for name in ('files','crypto_keys','key_versions','certificates','artifacts'):
     if name not in tables:
         failures.append(f'DDL: missing crypto resource table {name}')
-mastery_counts = {**{f'stages/{name}': count for name, count in [('V0-ENVIRONMENT.md', 2), ('V1-CORE-DEMO.md', 4), ('V2-WEB.md', 6), ('V3-MCP.md', 2), ('V4-APPROVAL-CRYPTO.md', 8), ('V5-KNOWLEDGE.md', 6), ('V6-DELIVERY.md', 6)]}, 'reference/06-CRYPTO-AGENT-SCOPE.md':6}
+mastery_counts = {f'stages/{name}': count for name, count in [('V0-ENVIRONMENT.md', 2), ('V1-CORE-DEMO.md', 7), ('V2-WEB.md', 6), ('V3-MCP.md', 2), ('V4-APPROVAL-CRYPTO.md', 10), ('V5-KNOWLEDGE.md', 6), ('V6-DELIVERY.md', 7)]}
 for name, expected_count in mastery_counts.items():
     content = (root/name).read_text(encoding='utf-8')
     if content.count('**技术点掌握程度标准**') != expected_count:
@@ -149,13 +150,6 @@ for title, content in goal_sections:
     if not block or len(block.group(1).splitlines()) < 4:
         failures.append(f'roadmap: {title} mastery body is missing or detached from header')
 
-for name in ('reference/07-AGENT-SYSTEM-DESIGN.md','reference/08-API-AND-WEB.md','reference/09-DELIVERY-AND-ACCEPTANCE.md'):
-    if not (root/name).is_file():
-        failures.append(f'missing supporting guide {name}')
-    if name not in (root/'README.md').read_text(encoding='utf-8'):
-        failures.append(f'README: guide not indexed {name}')
-
-
 # 交付阶段是唯一时间路径；技术卡与任务编号是稳定索引。
 plan = json.loads((root/'learning-plan.json').read_text(encoding='utf-8'))
 expected_stage_ids = [f'V{i}' for i in range(7)]
@@ -194,14 +188,33 @@ for stage_id, name in stage_documents.items():
         if required not in content:
             failures.append(f'{name}: missing stage entry/acceptance {required}')
 step_text = roadmap
-nav_text = (root/plan['documents']['task_index']).read_text(encoding='utf-8')
+nav_text = (root/plan['documents']['overview']).read_text(encoding='utf-8')
 overview_text = (root/plan['documents']['overview']).read_text(encoding='utf-8')
-if {path.name for path in root.glob('*.md')} != {'README.md', 'LEARNING-PATH.md'}:
+if {path.name for path in root.glob('*.md')} != {'README.md', 'ROADMAP.md'}:
     failures.append('navigation: root must keep only README and the learning overview')
+expected_markdown = {'README.md', 'ROADMAP.md', *stage_documents.values()}
+if {path.relative_to(root).as_posix() for path in markdown} != expected_markdown:
+    failures.append('navigation: exactly nine Markdown documents required; no standalone references/eval readmes')
+if (root/'reference').exists():
+    failures.append('navigation: obsolete reference directory must be removed')
+for stage_id, name in stage_documents.items():
+    content = (root/name).read_text(encoding='utf-8')
+    for required in ('## 实现目标与学习结果要求', '## 必须独立回答的关键问题',
+                     '## 分步任务与技术掌握标准', '## 本阶段的接口与实践细节'):
+        if required not in content:
+            failures.append(f'{name}: missing unified stage section {required}')
+    question_ids = re.findall(r'^\| Q(\d{2}) \|',content,re.M)
+    expected = plan['stage_learning_requirements'][stage_id]['question_count']
+    if question_ids != [f'{i:02}' for i in range(1,expected+1)] or expected < 16:
+        failures.append(f'{name}: independently answered questions missing/duplicated')
+    learning_block = content.split('## 实现目标与学习结果要求',1)[1].split('## 必须独立回答',1)[0]
+    rows = re.findall(r'^\|[^\n]+',learning_block,re.M)
+    if len(rows)-2 != plan['stage_learning_requirements'][stage_id]['technology_rows']:
+        failures.append(f'{name}: learning technology/result/evidence table incomplete')
 if len(stage_documents) != 7 or len(set(stage_documents.values())) != 7:
     failures.append('navigation: must have seven distinct stage guides')
 for task_family in range(1,7):
-    if f'| M{task_family} ' not in overview_text:
+    if not re.search(r'^\| M'+str(task_family)+r'(?: |\|)',overview_text,re.M):
         failures.append(f'navigation: missing original M{task_family} group mapping')
 v1_text = (root/stage_documents['V1']).read_text(encoding='utf-8')
 if 'id="first-demo"' not in v1_text or '第一个Demo 先跑通一个摘要工具' not in v1_text:
@@ -243,7 +256,7 @@ for name in (plan['documents']['overview'],):
         row=f"| {label} | {hours}h | {'；'.join(alloc)} | {alloc[-1].split()[0]} |"
         if row not in content:
             failures.append(f'{name}: goal slice table differs for {goal}')
-print('Checked consolidated V0-V6 guides and order, 450h stage/goal allocation, 81 detailed task rows and 86 navigation entries.')
+print('Checked nine unified documents, stage learning outcomes/questions and V0-V6 order, 450h stage/goal allocation, 81 detailed task rows and 86 navigation entries.')
 
 print(f'Checked {len(markdown)} Markdown files, {links} local links, {python_blocks} Python examples, {json_blocks} JSON examples, {len(tables)} DDL table dependencies, {len(files)} synthetic file sizes, {len(tools)} canonical tools and {sum(mastery_counts.values())} mastery tables.')
 for failure in failures:print('ERROR',failure)
