@@ -17,7 +17,7 @@ stages/
   V6-DELIVERY.md                 完整实验、安全与部署验收
 ```
 
-先读[Roadmap](ROADMAP.md)确定当前阶段，再只打开当前任务文档。每阶段集中写实现目标、学习技术、结果要求、分步任务、必须自己回答的问题和验收。数据库DDL、API合同、密码实践和实验协议分别放进所属阶段；不再单独维护参考文档。eval目录只保留数据、schema与校验脚本，使用说明在V6。
+先读[Roadmap](ROADMAP.md)确定当前阶段，再只打开当前任务文档。每阶段集中写实现目标、学习技术、结果要求、分步任务、必须自己回答的问题和验收。数据库DDL、API合同、密码实践和实验协议分别放进所属阶段。本仓库只保存Markdown；评测数据、schema与校验器由你在代码仓库实现，任务见V6。
 
 ## 开发与同步位置
 
@@ -462,16 +462,7 @@ OpenSSL与GmSSL必须放在同一个父目录下，与本文档仓库、Agent实
 <a id="study-共用任务卡与记录-相关检查入口"></a>
 #### 相关检查入口
 
-文档仓库检查只验证文档与数据草稿：
-
-```bash
-cd /home/zsw/work/agent_development/Agent-development-doc
-python3 eval/validate_dataset.py --all --mode draft
-python3 -m unittest discover -s eval -p 'test_*.py' -v
-python3 scripts/check_docs.py
-```
-
-应用检查在对应依赖已安装后运行：
+文档以Markdown阅读和维护，提交前核对目录、链接、表格、技术标准与阶段任务。应用检查在代码仓库、对应依赖已安装后运行：
 
 ```bash
 cd /home/zsw/work/agent_development/Agent-development-code
@@ -482,7 +473,7 @@ python -m ruff check .
 python -m mypy packages/
 ```
 
-类型检查范围随着合法包布局调整。mock、单元/合同、安全确定性检查与真实 Ollama/GPU 评测分开记录。文档与数据检查全绿不证明 Agent 会用工具，更不证明密码业务已经安全实现。
+类型检查范围随着合法包布局调整。mock、单元/合同、安全确定性检查与真实 Ollama/GPU 评测分开记录。文档完整不等于应用完成，实际业务由运行与独立验证证据签收。
 
 <a id="study-阶段共同检查"></a>
 <a id="study-阶段共同检查-阶段共同检查"></a>

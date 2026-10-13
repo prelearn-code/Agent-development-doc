@@ -135,7 +135,7 @@ router 是先缩小候选工具范围的组件，不是强制所有请求用某�
 | Scenario Runner | 对话与带外approve/fault/resume不同 | fixture→turn→审批故障→断言→cleanup | 实验/重复user/project/索引/Memory空间隔离 | 正常/失败场景记录 | 通用测试编排服务 |
 | Compare/CI | 条件分母、N/A、invalid、pp区别 | 一对一case结果，配对比较，合同/mock/GPU分层 | 缺结果、只跳失败、改gold不重基线阻止报告 | 逐case差异与CI记录 | 统计工具全体系 |
 
-**学习与实现顺序**：审定小批 → Runner与cleanup → 补齐全类100–180 → freeze → baseline → 变更compare。仓库24条seed是未审定草稿，不算完成。
+**学习与实现顺序**：审定小批 → Runner与cleanup → 补齐全类100–180 → freeze → baseline → 变更compare。由你在代码仓库积累和审定评测记录，小批草稿不算完整验收。
 
 **必须独立回答**：怎么定义加密任务真正成功？为什么只换session不能隔离Memory？frozen和draft有何区别？
 
@@ -757,28 +757,17 @@ Planner输出供运行时检查的步骤提议，而非shell脚本。计划变�
 <a id="dataset-1-1-起步资料与检查入口"></a>
 ### 起步资料与检查入口
 
-本目录提供 **8条RAG、11条Tool、5条综合草稿**，均为schema_version=3、status=draft、split=dev；对应8行gold映射是回填模板，不是额外测试。草稿描述本项目的证书检查、摘要、密钥元数据、逐项审批加密和报告偏好。文件字节和元数据示例明确标synthetic；证书、密钥材料与知识索引尚待准备，标为resolved=false。
+评测数据、schema、fixture、校验器和Runner由你在实现仓库的`eval/`中逐步建设；文档仓库只提供本章的设计要求和V5的八道起步题。先从少量证书检查、摘要、密钥元数据、逐项审批加密和报告偏好场景开始，逐条写清成功条件与独立证据。
 
-```bash
-cd /home/zsw/work/agent_development/Agent-development-doc
-python3 eval/validate_dataset.py --all --mode draft
-python3 -m unittest discover -s eval -p 'test_*.py' -v
-python3 scripts/check_docs.py
-```
+初始记录使用schema_version=3、status=draft、split=dev；教学文件与元数据明确标synthetic，尚未准备的证书、密钥材料与知识索引标resolved=false。逐题gold映射是审核记录，不计为额外测试。
 
-草稿检查允许明确未完成项并报告warning，不代表Agent或密码功能已通过。正式门禁示例：
-
-```bash
-python3 eval/validate_dataset.py eval/seed-eval-dataset.jsonl --mode frozen --evidence-manifest eval/evidence-manifest.template.json
-```
-
-当前草稿执行正式门禁应失败。准备真实资源、证据与人工审定后，对冻结文件执行该命令。
+你需要实现两种校验模式：draft允许明确未完成项并报告缺口；frozen拒绝未准备资源、无真实证据、未人工审核、无有效成功条件或审批不完整的记录。离线格式检查不执行Agent，也不证明密码业务通过；真实运行与资源断言另留证据。具体命令入口在代码仓库实现后记录。
 
 <a id="dataset-2"></a>
 <a id="dataset-2-2-字段与工具契约"></a>
 ### 字段与工具契约
 
-[dataset.schema.json](../eval/dataset.schema.json)定义字段和枚举，[validate_dataset.py](../eval/validate_dataset.py)检查结构、语义与冻结条件；应用工具契约见[工程合同](V1-CORE-DEMO.md#contract-4)，指标见[模型与实验协议](V6-DELIVERY.md#eval-1)。离线校验器不执行真实Agent、Provider或指标计算。
+按下列字段和枚举要求，在代码仓库定义评测schema并实现结构、语义与冻结校验；应用工具契约见[工程合同](V1-CORE-DEMO.md#contract-4)，指标见[模型与实验协议](V6-DELIVERY.md#eval-1)。离线校验器不执行真实Agent、Provider或指标计算。
 
 公共字段包含id、schema_version、status、split、group_id、category、difficulty、question、answerability、expected_behavior、fixture_refs、allowed_tool_plans、gold_calls、success_criteria、provenance。RAG增加gold_chunk_ids/gold_doc_ids/gold_pages/gold_section/gold_fact_slots；场景增加scenario。未知字段拒绝，字段或工具范围变更通过版本管理同步schema、validator与应用registry。
 
@@ -832,11 +821,11 @@ scenario包含user_key、steps和cleanup=delete_namespace。步骤支持turn、a
 <a id="dataset-5-5-fixture与证据准备"></a>
 ### Fixture与证据准备
 
-[fixtures.json](../eval/fixtures.json)定义id/kind/resolved/source/data。small_files_sample是3个公开教学字节样本；key_metadata_sample仅是元数据，不含真实材料；tool_failures_sample提供固定时钟的调用排行预期。fixture别名由应用Runner映射为隔离namespace内的UUID。
+在代码仓库构造自己的fixture，记录id/kind/resolved/source/data。可用small_files_sample表示公开教学字节样本，key_metadata_sample仅保存元数据，tool_failures_sample保存固定时钟的调用排行预期。每个预期由你独立核对；fixture别名由应用Runner映射为隔离namespace内的UUID。
 
-certificate_draft、key_material_draft和crypto_corpus_draft保持unresolved。后续按[Provider练习](V1-CORE-DEMO.md#provider-practice-10-后续可以照着操作的-provider-入门练习)准备样本，核对实际字段与参数后更新记录。只填resolved=true而没有对应资源不构成验收。
+尚未准备的证书、密钥材料与知识语料保持unresolved。按[Provider练习](V1-CORE-DEMO.md#provider-practice-10-后续可以照着操作的-provider-入门练习)准备样本，核对实际字段与参数后更新记录。只填resolved=true而没有对应资源不构成验收。
 
-[evidence-manifest.template.json](../eval/evidence-manifest.template.json)保留空chunks；索引完成后填manifest_version、corpus_version、chunk_id、doc_id、document_version、locator、content_hash。Qdrant point_id与业务chunk_id分开。[gold映射模板](../eval/gt-chunk-ids.template.jsonl)逐题回填后同步到RAG记录，实际事实槽仍需逐条审定。
+为实际索引创建证据清单，记录manifest_version、corpus_version、chunk_id、doc_id、document_version、locator、content_hash。Qdrant point_id与业务chunk_id分开。逐题审定gold映射后同步到RAG记录，实际事实槽仍需逐条核对；空清单不构成可定位证据。
 
 <a id="dataset-6"></a>
 <a id="dataset-6-6-标注冻结与回归"></a>
@@ -851,7 +840,7 @@ certificate_draft、key_material_draft和crypto_corpus_draft保持unresolved。�
 7. 每个实验/重复/case隔离user/project/session/文件/索引/Memory；cleanup只清理自己的namespace。
 8. 固定dataset/schema/fixture/corpus/index/environment hash与模型digest；结果一对一配对，缺失、重复、额外和超时不可静默跳过。
 
-后续目标仍为RAG≥50、Tool≥50、综合100–180条逐项审定用例。当前24条草稿仅帮助起步，不包含完整安全回归，也不能替代最终题库和应用运行证据。
+最终目标为RAG≥50、Tool≥50、综合100–180条逐项审定用例。少量起步题不包含完整安全回归，也不能替代最终题库和应用运行证据。
 
 <a id="dataset-7"></a>
 <a id="dataset-7-7-按交付阶段积累v6完成正式冻结"></a>
