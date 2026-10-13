@@ -465,5 +465,18 @@
     "导航数据用于文档与预算校验，不是应用运行配置。",
     "first_stage表示开始本阶段切片，finish_stage表示原任务全范围验收，不表示已实现。",
     "初期manual小用例计入当前工具/API任务，V6补齐Runner与正式规模；学习同一目标工时不重复计算。"
-  ]
+  ],
+  "documents": {
+    "overview": "LEARNING-PATH.md",
+    "task_index": "reference/TASK-INDEX.md",
+    "stages": {
+      "V0": "stages/V0-ENVIRONMENT.md",
+      "V1": "stages/V1-CORE-DEMO.md",
+      "V2": "stages/V2-WEB.md",
+      "V3": "stages/V3-MCP.md",
+      "V4": "stages/V4-APPROVAL-CRYPTO.md",
+      "V5": "stages/V5-KNOWLEDGE.md",
+      "V6": "stages/V6-DELIVERY.md"
+    }
+  }
 }

@@ -1,6 +1,8 @@
 # 仓库结构与工程契约
 
-> 应用接口、数据库与执行语义的唯一设计来源。评测记录字段另由 [eval/dataset.schema.json](eval/dataset.schema.json) 管理。结构随里程碑逐步建立，经过迁移与版本管理可以修改，不要求第一天冻结全部模块。
+> 按需参考资料。实现步骤与阶段目标集中在[学习总览](../LEARNING-PATH.md)及对应阶段，不需要先通读本文件。
+
+> 应用接口、数据库与执行语义的唯一设计来源。评测记录字段另由 [eval/dataset.schema.json](../eval/dataset.schema.json) 管理。结构随里程碑逐步建立，经过迁移与版本管理可以修改，不要求第一天冻结全部模块。
 
 ## 1. 目录与依赖
 
@@ -445,4 +447,4 @@ CI 分层：普通 CI 执行 lint/typecheck/合同/schema/mock 场景；专用�
 
 V1先只读Provider/registry/execute_tool/Loop；V2最少DB迁移/身份/Run/调用/文件/审计与JSON API/基础Web；V3一个Crypto MCP Server复用同业务服务；V4增加教学key version/审批/动作/artifact/checkpoint与写恢复；V5增加documents/index/citations/Memory/完整Verifier/SSE；V6补专项查询、完整工具/MCP/图版本/评测/部署。
 
-DDL是最终参考，按阶段迁移实际需要的表，不要求V2一次建完所有业务。MCP先只读，Server执行仍需本地授权；V4写handler复查固定审批，不信任模型的approved。schema/状态/审批/事件/证据契约不因顺序调整而改变。目标编号与M task前缀保留，实际导航按[00](00-ROADMAP.md)与[05](05-UBUNTU-STEP-BY-STEP.md)。
+DDL是最终参考，按阶段迁移实际需要的表，不要求V2一次建完所有业务。MCP先只读，Server执行仍需本地授权；V4写handler复查固定审批，不信任模型的approved。schema/状态/审批/事件/证据契约不因顺序调整而改变。目标编号与M task前缀保留，实际导航按[学习总览](../LEARNING-PATH.md)与[阶段学习入口](../LEARNING-PATH.md)。

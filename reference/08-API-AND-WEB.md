@@ -1,6 +1,8 @@
 # 08 - API契约与全栈页面学习设计
 
-配合[00](00-ROADMAP.md)目标3/4/15和[05](05-UBUNTU-STEP-BY-STEP.md)任务实施。这里是目标接口与前端验收设计；实现后以OpenAPI与合同测试确认，不把此表视为当前代码已有路由。DDL、状态/SSE枚举以[repo-structure](repo-structure.md)为准，业务工具约束见[06](06-CRYPTO-AGENT-SCOPE.md)，交付见[09](09-DELIVERY-AND-ACCEPTANCE.md)。
+> 按需参考资料。实现步骤与阶段目标集中在[学习总览](../LEARNING-PATH.md)及对应阶段，不需要先通读本文件。
+
+配合[学习总览](../LEARNING-PATH.md)目标3/4/15和[阶段学习入口](../LEARNING-PATH.md)任务实施。这里是目标接口与前端验收设计；实现后以OpenAPI与合同测试确认，不把此表视为当前代码已有路由。DDL、状态/SSE枚举以[repo-structure](repo-structure.md)为准，业务工具约束见[06](06-CRYPTO-AGENT-SCOPE.md)，交付见[09](09-DELIVERY-AND-ACCEPTANCE.md)。
 
 ## 1. 从最小API开始
 
@@ -161,7 +163,7 @@ Markdown、文件名和工具输出安全渲染；禁用危险原始HTML，外�
 | Provider崩溃/unknown | 不盲重跑非幂等动作 | 核对中/unknown与操作说明 |
 | 下载越权/撤权 | 当前授权重新检查 | 可理解拒绝，不能凭旧链接绕过 |
 
-完成证据：同一run_id的curl/API响应、DB状态、SSE与浏览器行为；UI截图只能作为辅助。系统与本人TS/异步理解分别按00标准验收，不只检查页面好看。
+完成证据：同一run_id的curl/API响应、DB状态、SSE与浏览器行为；UI截图只能作为辅助。系统与本人TS/异步理解分别按对应阶段目标表标准验收，不只检查页面好看。
 
 ## 9. 提前做网页时的功能切片
 

@@ -21,7 +21,7 @@ python3 eval/validate_dataset.py eval/seed-eval-dataset.jsonl --mode frozen --ev
 
 ## 2. 字段与工具契约
 
-[dataset.schema.json](dataset.schema.json)定义字段和枚举，[validate_dataset.py](validate_dataset.py)检查结构、语义与冻结条件；应用工具契约见[repo-structure.md](../repo-structure.md)，指标见[02-MODEL-AND-EVAL.md](../02-MODEL-AND-EVAL.md)。离线校验器不执行真实Agent、Provider或指标计算。
+[dataset.schema.json](dataset.schema.json)定义字段和枚举，[validate_dataset.py](validate_dataset.py)检查结构、语义与冻结条件；应用工具契约见[repo-structure.md](../reference/repo-structure.md)，指标见[02-MODEL-AND-EVAL.md](../reference/02-MODEL-AND-EVAL.md)。离线校验器不执行真实Agent、Provider或指标计算。
 
 公共字段包含id、schema_version、status、split、group_id、category、difficulty、question、answerability、expected_behavior、fixture_refs、allowed_tool_plans、gold_calls、success_criteria、provenance。RAG增加gold_chunk_ids/gold_doc_ids/gold_pages/gold_section/gold_fact_slots；场景增加scenario。未知字段拒绝，字段或工具范围变更通过版本管理同步schema、validator与应用registry。
 
@@ -71,7 +71,7 @@ scenario包含user_key、steps和cleanup=delete_namespace。步骤支持turn、a
 
 [fixtures.json](fixtures.json)定义id/kind/resolved/source/data。small_files_sample是3个公开教学字节样本；key_metadata_sample仅是元数据，不含真实材料；tool_failures_sample提供固定时钟的调用排行预期。fixture别名由应用Runner映射为隔离namespace内的UUID。
 
-certificate_draft、key_material_draft和crypto_corpus_draft保持unresolved。后续按[Provider练习](../06-CRYPTO-AGENT-SCOPE.md#10-后续可以照着操作的-provider-入门练习)准备样本，核对实际字段与参数后更新记录。只填resolved=true而没有对应资源不构成验收。
+certificate_draft、key_material_draft和crypto_corpus_draft保持unresolved。后续按[Provider练习](../reference/06-CRYPTO-AGENT-SCOPE.md#10-后续可以照着操作的-provider-入门练习)准备样本，核对实际字段与参数后更新记录。只填resolved=true而没有对应资源不构成验收。
 
 [evidence-manifest.template.json](evidence-manifest.template.json)保留空chunks；索引完成后填manifest_version、corpus_version、chunk_id、doc_id、document_version、locator、content_hash。Qdrant point_id与业务chunk_id分开。[gold映射模板](gt-chunk-ids.template.jsonl)逐题回填后同步到RAG记录，实际事实槽仍需逐条审定。
 
@@ -92,4 +92,4 @@ certificate_draft、key_material_draft和crypto_corpus_draft保持unresolved。�
 
 V1记录少量证书/摘要/Loop的明确输入输出与失败；V2增加API/幂等/权限；V3直调/MCP对照；V4逐动作审批与故障恢复；V5完成RAG≥50/四组检索及Verifier正误双集、Memory；V6固定完整工具池后完成Tool≥50、100–180综合、隔离Runner/cleanup/配对报告。
 
-M5 09/12是稳定任务ID，草稿从V1开始，正式范围到V6完成；manual小case不冒充Runner或frozen。原schema_version=3、canonical 13工具、人工审定/真实fixture/证据/审批门禁均保持。各V目标和预算见[00](../00-ROADMAP.md)，task切片见[05](../05-UBUNTU-STEP-BY-STEP.md)。
+M5 09/12是稳定任务ID，草稿从V1开始，正式范围到V6完成；manual小case不冒充Runner或frozen。原schema_version=3、canonical 13工具、人工审定/真实fixture/证据/审批门禁均保持。各V目标和预算见[学习总览](../LEARNING-PATH.md)，task切片见[阶段学习入口](../LEARNING-PATH.md)。

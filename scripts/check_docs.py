@@ -3,6 +3,7 @@ import ast
 import json
 import re
 import hashlib
+import unicodedata
 
 root = Path(__file__).resolve().parents[1]
 failures = []
@@ -10,17 +11,41 @@ markdown = sorted(root.rglob('*.md'))
 python_blocks = 0
 json_blocks = 0
 links = 0
+
+def heading_anchors(content):
+    anchors = set(re.findall(r'<a\s+id="([^"]+)"', content))
+    repetitions = {}
+    in_code = False
+    for line in content.splitlines():
+        if line.startswith('```'):
+            in_code = not in_code
+        if in_code:
+            continue
+        match = re.match(r'^#{1,6} (.+)$', line)
+        if not match:
+            continue
+        title = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', match.group(1)).lower()
+        slug = ''.join(char for char in title if char in '_- ' or not unicodedata.category(char).startswith(('P','S'))).replace(' ', '-')
+        count = repetitions.get(slug, 0)
+        repetitions[slug] = count + 1
+        anchors.add(slug if count == 0 else f'{slug}-{count}')
+    return anchors
+
 for path in markdown:
     text = path.read_text(encoding='utf-8')
     if text.count('```') % 2:
         failures.append(f'{path.name}: unbalanced fenced code blocks')
     for target in re.findall(r'\[[^\]]*\]\(([^)]+)\)', text):
-        if re.match(r'^[a-z]+://', target) or target.startswith('#'):
+        if re.match(r'^[a-z]+://', target):
             continue
-        target = target.split('#',1)[0].strip('<>')
+        target, _, fragment = target.strip('<>').partition('#')
+        linked_path = path.parent/target if target else path
         links += 1
-        if not (path.parent/target).is_file():
+        if not linked_path.is_file():
             failures.append(f'{path.name}: missing local link {target}')
+        elif fragment and linked_path.suffix == '.md':
+            if fragment not in heading_anchors(linked_path.read_text(encoding='utf-8')):
+                failures.append(f'{path.name}: missing section anchor {target}#{fragment}')
     for lang,code in re.findall(r'```([^\n]*)\n(.*?)```',text,re.S):
         if lang.strip() == 'python':
             python_blocks += 1
@@ -33,7 +58,7 @@ for path in markdown:
 for path in root.rglob('*.json'):
     json.loads(path.read_text(encoding='utf-8'))
 
-ddl_text = (root/'repo-structure.md').read_text(encoding='utf-8')
+ddl_text = (root/'reference/repo-structure.md').read_text(encoding='utf-8')
 ddl = re.search(r'```sql\n(.*?)```',ddl_text,re.S).group(1)
 tables = []
 for match in re.finditer(r'CREATE TABLE (\w+) \((.*?)\n\);',ddl,re.S):
@@ -68,7 +93,7 @@ if set(canonical.split('、')) != tools:
 for name in ('files','crypto_keys','key_versions','certificates','artifacts'):
     if name not in tables:
         failures.append(f'DDL: missing crypto resource table {name}')
-mastery_counts = {'00-ROADMAP.md':17, '05-UBUNTU-STEP-BY-STEP.md':17, '06-CRYPTO-AGENT-SCOPE.md':6}
+mastery_counts = {**{f'stages/{name}': count for name, count in [('V0-ENVIRONMENT.md', 2), ('V1-CORE-DEMO.md', 4), ('V2-WEB.md', 6), ('V3-MCP.md', 2), ('V4-APPROVAL-CRYPTO.md', 8), ('V5-KNOWLEDGE.md', 6), ('V6-DELIVERY.md', 6)]}, 'reference/06-CRYPTO-AGENT-SCOPE.md':6}
 for name, expected_count in mastery_counts.items():
     content = (root/name).read_text(encoding='utf-8')
     if content.count('**技术点掌握程度标准**') != expected_count:
@@ -104,7 +129,9 @@ for path in markdown:
     if re.search(r'^\|[-: |]+\|\n\s*\n\|',path.read_text(encoding='utf-8'),re.M):
         failures.append(f'{path.name}: table body detached by blank line')
 
-roadmap = (root/'00-ROADMAP.md').read_text(encoding='utf-8')
+plan = json.loads((root/'learning-plan.json').read_text(encoding='utf-8'))
+stage_documents = plan['documents']['stages']
+roadmap = '\n'.join((root/stage_documents[f'V{i}']).read_text(encoding='utf-8') for i in range(7))
 goal_sections = re.findall(r'^### (目标\d+|Phase 0)：[^\n]+\n(.*?)(?=^### |^## |\Z)', roadmap, re.M|re.S)
 if {title for title, _ in goal_sections} != {'Phase 0'} | {f'目标{i}' for i in range(1,17)}:
     failures.append('roadmap: Phase 0 or one of 16 goals missing/duplicated')
@@ -122,7 +149,7 @@ for title, content in goal_sections:
     if not block or len(block.group(1).splitlines()) < 4:
         failures.append(f'roadmap: {title} mastery body is missing or detached from header')
 
-for name in ('07-AGENT-SYSTEM-DESIGN.md','08-API-AND-WEB.md','09-DELIVERY-AND-ACCEPTANCE.md'):
+for name in ('reference/07-AGENT-SYSTEM-DESIGN.md','reference/08-API-AND-WEB.md','reference/09-DELIVERY-AND-ACCEPTANCE.md'):
     if not (root/name).is_file():
         failures.append(f'missing supporting guide {name}')
     if name not in (root/'README.md').read_text(encoding='utf-8'):
@@ -157,11 +184,28 @@ for title,hours in headers:
     goal = '0' if title == 'Phase 0' else title.removeprefix('目标')
     if plan['goal_hours'].get(goal) != int(hours):
         failures.append(f'plan: {title} budget differs from goal card')
-if re.findall(r'^## \d+\. (V\d)：',roadmap,re.M) != expected_stage_ids:
-    failures.append('roadmap: delivery chapters not in V0-V6 order')
-step_text = (root/'05-UBUNTU-STEP-BY-STEP.md').read_text(encoding='utf-8')
-if re.findall(r'^## \d+ (V\d) ',step_text,re.M) != expected_stage_ids:
-    failures.append('steps: delivery chapters not in V0-V6 order')
+if list(stage_documents) != expected_stage_ids:
+    failures.append('plan: stage guide order must be V0-V6')
+for stage_id, name in stage_documents.items():
+    content = (root/name).read_text(encoding='utf-8')
+    if not content.startswith('# '+stage_id+' '):
+        failures.append(f'{name}: stage identity differs from navigation')
+    for required in ('本阶段基础预算', '本阶段签收清单', '## 下一步'):
+        if required not in content:
+            failures.append(f'{name}: missing stage entry/acceptance {required}')
+step_text = roadmap
+nav_text = (root/plan['documents']['task_index']).read_text(encoding='utf-8')
+overview_text = (root/plan['documents']['overview']).read_text(encoding='utf-8')
+if {path.name for path in root.glob('*.md')} != {'README.md', 'LEARNING-PATH.md'}:
+    failures.append('navigation: root must keep only README and the learning overview')
+if len(stage_documents) != 7 or len(set(stage_documents.values())) != 7:
+    failures.append('navigation: must have seven distinct stage guides')
+for task_family in range(1,7):
+    if f'| M{task_family} ' not in overview_text:
+        failures.append(f'navigation: missing original M{task_family} group mapping')
+v1_text = (root/stage_documents['V1']).read_text(encoding='utf-8')
+if 'id="first-demo"' not in v1_text or '第一个Demo 先跑通一个摘要工具' not in v1_text:
+    failures.append('V1: missing single digest tool Demo entrance')
 detail_task_ids = []
 for line in step_text.splitlines():
     match = re.match(r'^\| (M[1-6] \d{2}) \|',line)
@@ -172,7 +216,7 @@ if len(detail_task_ids) != 81 or len(set(detail_task_ids)) != 81:
 expected_tasks = set(detail_task_ids) | {f'P0 {i:02}' for i in range(1,6)}
 if set(plan['task_stages']) != expected_tasks:
     failures.append('plan: task navigation differs from detailed guide')
-nav_ids = re.findall(r'^\| ((?:P0|M[1-6]) \d{2}) \| V\d \| V\d \|$',step_text,re.M)
+nav_ids = re.findall(r'^\| ((?:P0|M[1-6]) \d{2}) \| V\d \| V\d \|$',nav_text,re.M)
 if len(nav_ids) != 86 or set(nav_ids) != expected_tasks:
     failures.append('steps: task navigation must cover all 86 task entrances')
 for task, mapping in plan['task_stages'].items():
@@ -181,9 +225,9 @@ for task, mapping in plan['task_stages'].items():
         failures.append(f'plan: {task} unknown stage')
     elif stage_ids.index(first) > stage_ids.index(finish):
         failures.append(f'plan: {task} finishes before first learning slice')
-    if f'| {task} | {first} | {finish} |' not in step_text:
+    if f'| {task} | {first} | {finish} |' not in nav_text:
         failures.append(f'plan: {task} stage mapping differs from guide')
-for name in ('00-ROADMAP.md','03-LEARNING-ORDER.md','05-UBUNTU-STEP-BY-STEP.md'):
+for name in (plan['documents']['overview'],):
     content = (root/name).read_text(encoding='utf-8')
     cumulative = 0
     for stage in stages:
@@ -191,7 +235,7 @@ for name in ('00-ROADMAP.md','03-LEARNING-ORDER.md','05-UBUNTU-STEP-BY-STEP.md')
         row = f"| {stage['id']} {stage['name']} | {stage['hours']}h | {cumulative}h |"
         if row not in content:
             failures.append(f'{name}: stage budget/cumulative table differs for {stage["id"]}')
-for name in ('00-ROADMAP.md','03-LEARNING-ORDER.md'):
+for name in (plan['documents']['overview'],):
     content=(root/name).read_text(encoding='utf-8')
     for goal,hours in plan['goal_hours'].items():
         label='Phase 0' if goal=='0' else ('综合验收' if goal=='integration' else '目标'+goal)
@@ -199,7 +243,7 @@ for name in ('00-ROADMAP.md','03-LEARNING-ORDER.md'):
         row=f"| {label} | {hours}h | {'；'.join(alloc)} | {alloc[-1].split()[0]} |"
         if row not in content:
             failures.append(f'{name}: goal slice table differs for {goal}')
-print('Checked V0-V6 order, 450h stage/goal allocation, 81 detailed task rows and 86 navigation entries.')
+print('Checked consolidated V0-V6 guides and order, 450h stage/goal allocation, 81 detailed task rows and 86 navigation entries.')
 
 print(f'Checked {len(markdown)} Markdown files, {links} local links, {python_blocks} Python examples, {json_blocks} JSON examples, {len(tables)} DDL table dependencies, {len(files)} synthetic file sizes, {len(tools)} canonical tools and {sum(mastery_counts.values())} mastery tables.')
 for failure in failures:print('ERROR',failure)
