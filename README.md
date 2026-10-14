@@ -1,12 +1,15 @@
 # 密码工具 Agent 全栈开发学习项目
 
-这是学习文档仓库，应用在同级Agent-development-code实现。每周投入20–25小时，先跑通一个真实OpenSSL工具调用的Agent Demo，再逐步扩展。密码库负责确定性运算，模型负责理解请求与提议操作，执行器负责授权和真实执行。
+这是学习文档仓库，应用在同级Agent-development-code实现。每周投入20–25小时，沿最小Agent Demo逐步建设可复用部件。当前密码后端使用已编译的OpenSSL/GmSSL可执行程序，后续将固定调用提取到Python Provider；模型负责理解请求与提议操作，执行器负责授权和真实执行。
 
-## 文档只保留九份
+## 文档目录
 
 ```text
 README.md                       项目、环境、协作与通用学习记录
 ROADMAP.md                      实现顺序、阶段成果、工时与任务导航
+CLI-CRYPTO-REFERENCE.md         OpenSSL/GmSSL 命令、参数与本机验证边界
+CLI-OPENSSL-HELP.md              OpenSSL 全部标准命令及摘要/加密别名的帮助索引
+CLI-GMSSL-HELP.md                GmSSL 全部子命令的本机帮助与解读
 stages/
   V0-ENVIRONMENT.md              环境请求与首测
   V1-CORE-DEMO.md                单工具Agent Demo与核心扩展
@@ -17,11 +20,13 @@ stages/
   V6-DELIVERY.md                 完整实验、安全与部署验收
 ```
 
-先读[Roadmap](ROADMAP.md)确定当前阶段，再只打开当前任务文档。每阶段集中写实现目标、学习技术、结果要求、分步任务、必须自己回答的问题和验收。数据库DDL、API合同、密码实践和实验协议分别放进所属阶段。本仓库只保存Markdown；评测数据、schema与校验器由你在代码仓库实现，任务见V6。
+先读[Roadmap](ROADMAP.md)确定当前阶段，再打开当前任务文档；常用密码程序操作查[命令行速查](CLI-CRYPTO-REFERENCE.md)，逐条核对帮助查 [OpenSSL](CLI-OPENSSL-HELP.md) 与 [GmSSL](CLI-GMSSL-HELP.md) 目录。每阶段集中写实现目标、学习技术、结果要求、分步任务、必须自己回答的问题和验收。数据库DDL、API合同、密码实践和实验协议分别放进所属阶段。本仓库只保存Markdown；评测数据、schema与校验器由你在代码仓库实现，任务见V6。
+
+**交付阶段只使用 V0–V6。** 阅读和实施均以[Roadmap](ROADMAP.md)中的 V 阶段为准；文内 `T001` 等编号仅用于定位细分任务，不表示另一套阶段。`m1` 等小写名称是代码仓库现有的依赖组名，也不是阶段。
 
 ## 开发与同步位置
 
-你后续在Ubuntu中安装依赖、编写代码、运行模型/密码工具、构建前端和执行测试；Windows浏览器访问网页。本次文档与导航只在D:\work本地仓库修改并同步远端，助手不访问你的WSL仓库；Ubuntu仓库由你自行同步。命令是后续学习操作，尚未执行的业务保持未验证。
+应用开发、依赖安装、模型/密码工具、前端构建和测试在Ubuntu中进行；Windows浏览器访问网页。文档与代码是独立Git仓库，操作前核对当前路径和未提交修改，提交与推送按用户授权执行。下文命令是学习操作，尚未执行的业务保持未验证。
 
 四仓库必须处于同一父目录：
 
@@ -35,11 +40,15 @@ stages/
 
 OpenSSL与GmSSL是独立源码仓库，与文档目录同级；源码、构建目录和安装prefix分别记录，可选GmSSL-Python也放同级。不在文档仓库放密钥、解密产物、真实工作资料或模型权重。
 
-## 当前骨架与第一步
+## 当前实现与后续接入
 
-Windows代码仓库已有核心类型/配置/日志、薄CLI和合同检查；真实工具、模型客户端与本人Loop待实现。Ubuntu当前状态由你同步后核对。`python -m packages.app status`只报告入口，不证明Agent已能执行密码操作；没有自己的runner时run明确失败。
+2026年10月13日迁移后核对：最小Demo的有限Loop与终端交互位于`packages/app/agent.py`；模型请求位于`packages/llm/client.py`，工具参数校验与MCP调用位于`tools/`，MCP客户端与Crypto服务位于`mcp_integration/`，现有SM2可执行程序调用与教学密钥管理位于`packages/crypto/`。SM2密钥生成、签名和验签仍是当前已有功能，后续直接在这些模块完善。
 
-先按[V0](stages/V0-ENVIRONMENT.md)完成环境请求与首测，再做[V1摘要Demo](stages/V1-CORE-DEMO.md#first-demo)。已有配置、依赖和目录先检查再修改，不覆盖自己的uv.lock或未提交代码。同步步骤见代码仓库[Git同步说明](../Agent-development-code/docs/GIT-SYNC.md)。
+`packages.app run`已调用`packages.app.agent.run`执行一轮请求；交互入口使用同一Loop完成多轮会话。正式登记、授权、审批、Graph与恢复等部件仍有待实现骨架，现有Demo不自动签收V1–V4的完整要求。
+
+实际代码目录、功能状态与运行命令统一见[代码仓库README](../Agent-development-code/README.md)，目录契约在[代码仓库scripts/layout.json](../Agent-development-code/scripts/layout.json)。代码仓库已移除`docs/`；环境、阶段学习与本人决策记录放在本学习文档仓库的现有文件中。
+
+未验证环境先按[V0](stages/V0-ENVIRONMENT.md)核对，再对照[V1摘要Demo与核心扩展](stages/V1-CORE-DEMO.md#first-demo)补齐相应能力。已有Demo代码、配置与uv.lock先检查再复用，不覆盖未提交成果。同步仓库时先看`git status`，工作区干净再快进拉取；有本地修改时先保留并处理冲突。
 
 ## README页内阅读入口
 
@@ -54,7 +63,7 @@ Windows代码仓库已有核心类型/配置/日志、薄CLI和合同检查；�
 | 阶段 | 需要的环境 | 验证到什么程度 |
 |---|---|---|
 | V0与第一个Demo | Ubuntu、Git、Python3.12/uv/venv、Ollama与一个模型、OpenSSL CLI | 新终端定位同一解释器；真实模型请求、固定摘要与首测可核对 |
-| V1扩展 | 实际选定的GmSSL库/绑定、pytest/httpx/Pydantic | 能力探测、独立向量与错误分类；未支持不伪装成功 |
+| V1扩展 | 已编译的OpenSSL/GmSSL CLI、Python Provider、pytest/httpx/Pydantic | 能力探测、独立向量与错误分类；未支持不伪装成功 |
 | V2 | PostgreSQL/Alembic、FastAPI、Node/pnpm/React；Docker按服务方式引入 | 教学身份/上传/JSON请求/快照、迁移与浏览器访问真实通过 |
 | V3 | 单Crypto MCP Server与锁定SDK | 固定授权连接、list/call、直调对照；不一次启动三个Server |
 | V4 | 固定AEAD能力、受控keystore、Graph与持久checkpoint | 审批绑定、账本、产物与崩溃核对；不能只验证库导入 |
@@ -163,11 +172,11 @@ python -c "import sys; print(sys.executable, sys.prefix)"   # 必须指向 .venv
 
 先创建合法 pyproject（至少 name/version/requires-python），按里程碑加入依赖；
 提交 uv.lock，正式启动 `uv sync --frozen`。开发依赖 pytest/pytest-asyncio/ruff/mypy；
-M1 加 pydantic/httpx/pydantic-settings，M2 加 fastapi/uvicorn/sqlalchemy/asyncpg/alembic，
-M3 再加 qdrant-client/pymupdf/BM25/分词器，M4 加 mcp/langgraph/checkpoint-postgres。
+V1 加 pydantic/httpx/pydantic-settings，V2 加 fastapi/uvicorn/sqlalchemy/asyncpg/alembic，
+V5 再加 qdrant-client/pymupdf/BM25/分词器，V4 按需加 langgraph/checkpoint-postgres；当前Demo所用的MCP已在基础依赖中。实际安装时仍按代码仓库现有的 `m1`/`m2` 等 extra 名称选择依赖。
 不能靠无上界的最低版本声明保证 API 稳定，实际版本锁定后保存兼容 smoke Trace。
 
-> 应用仓库已按上述分组写好 `pyproject.toml`（`m1`/`m2`/`m3`/`m4`/`ml`/`dev` extras），
+> 应用仓库已按上述分组写好 `pyproject.toml`（`m1`/`m2`/`m3`/`m4`/`mcp`/`workflow`/`ml`/`dev` extras），
 > 并带有纯标准库的自检脚本 `scripts/selftest.py`（校验目录布局、`.env.example` 与
 > `Settings` 字段双向一致、密钥扫描、分层反向依赖）。**在 `uv sync` 之前就能跑**。
 
@@ -185,13 +194,13 @@ curl -s http://127.0.0.1:11434/api/version
 
 # 模型
 ollama list
-ollama pull qwen3.5:4b               # Phase 0 唯一必需模型；仅缺失时拉取
+ollama pull qwen3.5:4b               # V0 唯一必需模型；仅缺失时拉取
 ollama run qwen3.5:4b "用一句话说明工具调用"
 ollama ps
 ```
 
-模型文件在 `/usr/share/ollama/.ollama/models`（当前 20 GB）。M3 拉 bge-m3，
-M5 按需拉 qwen3.5:9b。模型名可变，实验记录实际 digest、量化、template、上下文参数；
+模型文件在 `/usr/share/ollama/.ollama/models`（当前 20 GB）。V5 引入检索时拉 bge-m3，
+V6 模型对照时按需拉 qwen3.5:9b。模型名可变，实验记录实际 digest、量化、template、上下文参数；
 权重体积不能直接当推理峰值显存。
 
 `qwen3.5:4b` 要求 Ollama ≥ 0.30.0（本机 0.32.15 满足）。它是**统一多模态**模型
@@ -228,7 +237,7 @@ sudo systemctl edit ollama
 <a id="env-7-7-密码-provider-与资源边界"></a>
 ### 密码 Provider 与资源边界
 
-OpenSSL/GmSSL 源码仓库与文档同级，运行时采用受控安装前缀或验证过的系统库。记录 CLI、Python 包和实际 C 后端版本，不依据源码目录存在认定能力已可用。
+OpenSSL/GmSSL源码仓库与文档同级，当前运行路线采用已编译的CLI及受控程序路径。`packages/crypto/providers/openssl_cli.py`与`gmssl_cli.py`负责封装固定调用，MCP工具调用对应Python函数；每次实际计算仍由Provider执行可执行程序。记录二进制位置、版本与能力，不依据源码目录存在认定能力已可用。Python库/绑定属于后续可选替代路线，采用时再记录相应包与后端版本。
 
 固定 API 或参数数组调用 Provider，限制输入大小、超时和输出。模型只提交获授权的 file_id/certificate_id/key_id；服务端解析真实位置，密钥与解密明文不进入模型。算法不支持时明确拒绝，不静默切换为其他模式。
 
@@ -242,7 +251,7 @@ OpenSSL/GmSSL 源码仓库与文档同级，运行时采用受控安装前缀或
 <a id="env-8-81-项目环境记录"></a>
 #### 项目环境记录
 
-以下记录来自2026年10月10日的只读检查，供Phase 0确定起点。开始学习时重新运行对应检查，记录当次版本与结果，不用记录表代替实际验收。
+以下记录来自2026年10月10日的只读检查，供V0确定起点。开始学习时重新运行对应检查，记录当次版本与结果，不用记录表代替实际验收。
 
 | 项目 | 已记录的状态 | 后续检查 |
 |---|---|---|
@@ -251,8 +260,8 @@ OpenSSL/GmSSL 源码仓库与文档同级，运行时采用受控安装前缀或
 | Ollama | Ubuntu内服务，模型列表已有qwen3.5:4b | version、digest与真实请求 |
 | 模型配置 | `.env.example`为127.0.0.1:11434和qwen3.5:4b | 当前Settings与本地配置一致 |
 | OpenSSL CLI | 3.0.2 | 路径、实际版本、帮助与smoke |
-| Python密码后端 | 尚未验证 | cryptography后端版本与选定功能 |
-| GmSSL | 尚未验证 | C库、绑定、动态库加载与能力清单 |
+| Python密码后端（可选扩展） | 尚未验证 | 采用库路线时再记录包与实际后端版本 |
+| GmSSL | 尚未验证 | 编译后的CLI路径、版本与能力清单；采用绑定时另行记录 |
 | 项目基础 | 已有core配置与模型骨架；检查时无uv.lock和工具/Loop测试 | 按P0任务补依赖锁和首个测试 |
 | Compose与应用运行 | 本轮未作运行验证 | 插件、迁移、服务readiness与应用smoke |
 
@@ -260,19 +269,19 @@ OpenSSL/GmSSL 源码仓库与文档同级，运行时采用受控安装前缀或
 <a id="env-8-82-模型与资源记录"></a>
 #### 模型与资源记录
 
-Phase 0只需qwen3.5:4b；9B在M5比较前准备。Embedding到M3引入，reranker按消融需求准备，27B属于可选配置。每次实验保存实际model digest、推理配置、空闲/峰值显存、冷/热加载状态，下载体积不能直接当显存占用。
+V0只需qwen3.5:4b；9B在V6模型比较前准备。Embedding到V5引入，reranker按消融需求准备，27B属于可选配置。每次实验保存实际model digest、推理配置、空闲/峰值显存、冷/热加载状态，下载体积不能直接当显存占用。
 
 
 <a id="env-8-83-环境验收记录方式"></a>
 #### 环境验收记录方式
 
-实现仓库的`docs/environment.md`保存当次命令、输出、版本、未验证项和必要降级说明；`scripts/selftest.py`检查骨架与配置契约。二者与文档不一致时先核对实际环境，再同步修正。学习从 [P0环境检查](stages/V0-ENVIRONMENT.md#p0-01-检查已有环境) 开始。
+在本README的环境记录中按日期追加当次版本、命令摘要、证据位置、未验证项和必要降级说明，保留旧快照的日期。原始输出留在代码仓库受控本地数据目录，文档只引用脱敏证据。`scripts/selftest.py`读取`scripts/layout.json`并核对代码README、配置和分层。出现差异时先核对实际环境，再更新说明。学习从[V0环境检查](stages/V0-ENVIRONMENT.md#v0-01-检查已有环境)开始。
 
 <a id="contract-8"></a>
 <a id="contract-8-8-配置与持续检查"></a>
 ### 配置与持续检查
 
-干净目录复现、服务依赖、备份/keystore恢复与毕业证据见[交付验收](stages/V6-DELIVERY.md#delivery-1)。本文件DDL为参考设计，文档静态检查不等于PostgreSQL实际迁移与权限已验收。
+干净目录复现、服务依赖、备份/keystore恢复与毕业证据见[交付验收](stages/V6-DELIVERY.md#delivery-1)。V2阶段DDL为参考设计，文档静态检查不等于PostgreSQL实际迁移与权限已验收。
 
 `.env.example` 至少：APP_ENV、API_KEY_HEADER、OLLAMA_BASE_URL、模型名、LLM_THINK、LLM_NUM_CTX、LLM_TIMEOUT_S、DATABASE_URL(app_user)、QUERY_DATABASE_URL(query_reader)、AUDIT_DATABASE_URL(audit_writer)、MIGRATION_DATABASE_URL（仅迁移）、QDRANT_URL、项目空间/collection、可选 Redis/存储 URL、路径roots、密码Provider/keystore配置、受信任 MCP endpoints、EVAL_CONCURRENCY=1。
 
@@ -427,11 +436,11 @@ OpenSSL与GmSSL必须放在同一个父目录下，与本文档仓库、Agent实
 <a id="study-共用任务卡与记录-一次任务只写一张卡"></a>
 #### 一次任务只写一张卡
 
-在实现仓库的 `docs/progress.md` 自己记录以下字段。任务卡模板不是应用已实现接口，也不是正式评测 schema。
+在当前阶段文档末尾追加“本人学习记录”，自己记录以下字段；环境版本记录追加在本README的环境记录中。任务卡模板不是应用已实现接口，也不是正式评测schema，不需要在代码仓库另建文档目录。
 
 | 字段 | 要写的内容 |
 |---|---|
-| 任务 | 如 M1 02，解析公开测试证书 |
+| 任务 | 如 T002，解析公开测试证书 |
 | 要解决的问题 | 当前系统缺什么能力，谁会使用 |
 | 先学内容 | 本次真正需要的 2–4 个概念和参考资料 |
 | 掌握标准与进度 | 对应本阶段表中的技术行；逐项记“待学 / 在做 / 已验证”，补上能解释、独立实现和排错的证据 |
@@ -454,9 +463,9 @@ OpenSSL与GmSSL必须放在同一个父目录下，与本文档仓库、Agent实
 | 模型质量不够 | 分析失败类型，在 dev 小步改进并记录 baseline |
 | 无实际运行证据 | 记为未验证，不勾完成 |
 | 选修或超范围能力 | 登记扩展清单，不阻塞当前最小闭环 |
-| 未理解代码 | 记 `docs/to-digest.md`，关键安全/协议内容阶段内消化 |
+| 未理解代码 | 记入当前阶段文末的本人学习记录，关键安全/协议内容阶段内消化 |
 
-每个阶段末自己写简短决策记录，说明选择、证据、限制和重审条件。实现仓库 [AGENTS.md](../Agent-development-code/AGENTS.md) 的手写 Loop、Verifier、安全判断与个人决策边界在后续代码任务中适用；独立编写要求在对应实现阶段执行。
+每个阶段末在同一学习记录中自己写简短决策，说明选择、证据、限制和重审条件。实现仓库[AGENTS.md](../Agent-development-code/AGENTS.md)的手写Loop、Verifier、安全判断与个人决策边界在后续代码任务中适用；独立编写要求在对应实现阶段执行。
 
 
 <a id="study-共用任务卡与记录-相关检查入口"></a>
@@ -554,7 +563,7 @@ python -m mypy packages/
 
 
 <a id="starting-snapshot-2026-年-10-月-10-日只读核对结果"></a>
-#### 年 10 月 10 日只读核对结果
+#### 2026年10月10日只读核对结果（历史快照）
 
 | 项目 | 核对到的状态 | 下一步 |
 |---|---|---|
@@ -566,10 +575,10 @@ python -m mypy packages/
 | 配置样例 | 已使用 `127.0.0.1:11434` 和 `qwen3.5:4b` | 检查实际 Settings 与本地配置 |
 | OpenSSL CLI | 3.0.2 | 固定实际版本，后续检查兼容与更新需求 |
 | 实现内容 | core 配置与模型骨架；未发现工具、Loop 或 `test_*.py` 实现 | 骨架齐全不等于阶段完成 |
-| 依赖锁 | 核对时未发现 `uv.lock` | Phase 0 生成并核对锁文件 |
-| GmSSL | 尚未验证安装状态 | Phase 0 后段或 M1 按选定路线安装验证 |
+| 依赖锁 | 核对时未发现 `uv.lock` | V0 生成并核对锁文件 |
+| GmSSL | 尚未验证安装状态 | V0 后段或 V1 按选定路线安装验证 |
 
-这是一次起点记录，不代表已经完成 Phase 0。机器状态可能变化，学习开始时按下面命令重新检查。后续以 Ubuntu 工作目录为开发现场。
+这是一次起点记录，不代表已经完成 V0。机器状态可能变化，学习开始时按下面命令重新检查。后续以 Ubuntu 工作目录为开发现场。
 
 
 <a id="starting-snapshot-所有开发命令在-ubuntu-bash-中执行"></a>
@@ -600,7 +609,7 @@ python --version
 python -c 'import sys; print(sys.executable)'
 ```
 
-预期最后一行指向实现仓库的 `.venv/bin/python`，版本为 3.12.x。没有虚拟环境时先做 Phase 0 的环境任务。
+预期最后一行指向实现仓库的 `.venv/bin/python`，版本为 3.12.x。没有虚拟环境时先做 V0 的环境任务。
 
 已有仓库同步时先看 `git status`，工作区干净再 `git pull --ff-only`。有自己的修改时先决定提交、保留或合并，不执行覆盖式 reset，也不把 clone 命令运行到已存在的目录上。
 
@@ -608,7 +617,7 @@ python -c 'import sys; print(sys.executable)'
 <a id="starting-snapshot-先理解目录与接口的区别"></a>
 #### 先理解目录与接口的区别
 
-当前骨架使用 `packages/core`、`tools`、`minimal_agent` 等目录；[工程合同](stages/V1-CORE-DEMO.md#contract-4) 还给出了 `src/lpa` 的目标布局。第一天沿用现有骨架，**不要为了看起来整齐搬动全部文件**。后续V2/V4如果选择调整包布局，必须同步导入路径、打包配置、结构文档和 `selftest.py`。
+当前结构使用`packages/`、`tools/`、`mcp_integration/`等目录，最小Demo已迁入这些模块；完整目录树以[代码README](../Agent-development-code/README.md#目录结构)为准，阶段职责见[V1目录与依赖](stages/V1-CORE-DEMO.md#contract-1)。后续在主项目扩展时同步导入路径、打包配置、代码README、`scripts/layout.json`和`selftest.py`。
 
 特别注意顶级 `mcp/` 目录可能遮蔽第三方 SDK，`agent-api` 也不能直接当 Python 包名导入。落地时选择合法包名并验证 `import` 来源；指南中的业务模块名称表示职责，不保证当前已经存在对应命令入口。
 

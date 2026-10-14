@@ -6,6 +6,8 @@
 
 先用一个digest_file跑通终端Agent Demo：模型提议、程序校验、OpenSSL执行、真实结果反馈、本人有限Loop与回答。Demo通过后在同一代码上加证书工具，再补完整预算、失败、多调用、Context与NDJSON。AEAD练习留V4。
 
+上述是学习切片，现有SM2 MCP Demo已拆到主项目对应模块：`packages/app/agent.py`保留Loop，`packages/llm/client.py`发送模型请求，`tools/`校验并调用工具，`mcp_integration/`负责MCP连接与服务，`packages/crypto/`封装SM2 CLI调用和教学密钥。摘要练习可在同一服务增加工具，继续使用已有Loop。
+
 | 需要学习的技术 | 学习结果要求 | 独立实现与排错证据 |
 |---|---|---|
 | Python模块、类型、bytes/编码 | 把Provider/handler/executor/Loop分开；摘要针对实际字节而不是展示文本 | 直接摘要与独立向量对照；修改字节、非ASCII和坏输入有结果 |
@@ -19,7 +21,7 @@
 
 ## 必须独立回答的关键问题
 
-这些问题必须由你结合自己的实现作答，AI只审查。记录在代码仓库docs/progress.md，写清场景、自己的理由、真实证据与未覆盖边界；只背定义或复制AI答案不算通过。
+这些问题必须由你结合自己的实现作答，AI只审查。记录在本阶段文末的本人学习记录中，写清场景、自己的理由、真实证据与未覆盖边界；只背定义或复制AI答案不算通过。
 
 第一个单工具Demo先回答Q01–Q10；扩展到两个工具与完整V1后回答全部问题。不要为回答后续问题而推迟第一个Demo。
 
@@ -65,24 +67,24 @@
 
 | 小步 | 对应任务 | 实现位置 | 学习内容与达到的程度 | 通过后得到什么 |
 |---|---|---|---|---|
-| 1 直接计算摘要 | M1 01、03 | packages/crypto/providers/openssl_cli.py；tools/builtin/digest_file.py | 理解bytes、摘要和固定参数数组；不接模型独立运行，对照OpenSSL命令结果 | 确定性工具可运行 |
-| 2 注册并校验唯一工具 | M1 04–05、07当前范围 | tools/registry.py、tools/executor.py；packages/security；tools/tests | 解释schema与权限不同；未知工具/坏参数/非教学资源执行前拒绝；有超时和输出上限 | 一个允许工具的受控执行入口 |
-| 3 得到一次工具提议 | M1 08–09 | packages/llm/client.py | 非流式请求只暴露digest_file；保留原生tool_calls，解释名字和arguments来源 | 模型能提出调用，尚不能据此声称执行成功 |
-| 4 回传一次真实结果 | M1 10 | 消息构建与工具反馈接口 | 保存assistant提议和实际tool结果，说明报文顺序；工具失败也回传 | 模型根据真实摘要作答 |
-| 5 本人手写有限Loop | M1 11及12–13相关小范围 | minimal_agent/runner.py | 自己决定继续/结束，设置最大轮数/总超时，输出停止原因；AI只审查 | 可重复运行的CLI Agent Demo |
-| 6 验证并解释 | M1 07、12–13当前范围 | tools/tests；脱敏Trace；docs/progress.md | 正常、非法文件、工具失败、超轮数均有结果；自己改一个约束后回归 | 最小Demo可以签收，但完整V1尚未签收 |
+| 1 直接计算摘要 | T001、T003 | packages/crypto/providers/openssl_cli.py；MCP包装放mcp_integration/server_crypto/openssl_tools/tools.py | 理解bytes、摘要和固定参数数组；不接模型独立运行，对照OpenSSL命令结果 | 确定性工具可运行 |
+| 2 注册并校验唯一工具 | T004–T005、T007当前范围 | tools/registry.py、tools/executor.py；packages/security；tools/tests | 解释schema与权限不同；未知工具/坏参数/非教学资源执行前拒绝；有超时和输出上限 | 一个允许工具的受控执行入口 |
+| 3 得到一次工具提议 | T008–T009 | packages/llm/client.py | 非流式请求只暴露digest_file；保留原生tool_calls，解释名字和arguments来源 | 模型能提出调用，尚不能据此声称执行成功 |
+| 4 回传一次真实结果 | T010 | 消息构建与工具反馈接口 | 保存assistant提议和实际tool结果，说明报文顺序；工具失败也回传 | 模型根据真实摘要作答 |
+| 5 本人手写有限Loop | T011及T012–T013相关小范围 | packages/app/agent.py | 在已有Loop上核对继续/结束、最大轮数/总超时和停止原因；AI只审查 | 可重复运行的CLI Agent Demo |
+| 6 验证并解释 | T007、T012–T013当前范围 | tools/tests；脱敏Trace；本阶段学习记录 | 正常、非法文件、工具失败、超轮数均有结果；自己改一个约束后回归 | 最小Demo可以签收，但完整V1尚未签收 |
 
-以上步骤调整了M1 02和03的实践先后，任务编号不变：先M1 03摘要，单工具闭环后才M1 02证书。不是重排整个技术任务编号。Demo只使用非流式协议、一个工具和固定教学资源；NDJSON、第二工具、多调用和完整预算随后在本V1补齐。
+以上步骤调整了T002和T003的实践先后，任务编号不变：先T003摘要，单工具闭环后才T002证书。不是重排整个技术任务编号。Demo只使用非流式协议、一个工具和固定教学资源；NDJSON、第二工具、多调用和完整预算随后在本V1补齐。
 
-本人入口只要求满足已有CLI合同：`minimal_agent.runner.run`为异步函数，接收question关键字并返回可序列化JSON对象。签名和退出码见代码仓库[CORE-FIRST](../../Agent-development-code/docs/CORE-FIRST.md)；入口适配器不替你实现Loop。
+现有CLI合同由`packages.app.agent.run`满足：异步函数接收question关键字并返回可序列化JSON对象。签名和退出码见[代码仓库README](../../Agent-development-code/README.md)；入口适配器只调用一次，Loop在`agent.py`中。
 
 ```bash
-# Ubuntu实现仓库；完成自己的runner后才运行第二条
+# Ubuntu实现仓库；单次入口已接到现有Agent
 python -m packages.app status
 python -m packages.app run --question '计算教学文件 sample.txt 的 SHA-256 摘要'
 ```
 
-`status`只证明入口可启动；`run`退出0只证明函数返回，必须继续核对真实ToolResult、独立摘要和Trace，不能据此认定业务成功。没有runner时应明确失败，不返回空答案伪装成功。
+`status`只证明入口可启动；`run`退出0只证明函数返回，必须继续核对真实ToolResult、独立摘要和Trace，不能据此认定业务成功。
 
 ### Demo验收清单
 
@@ -97,9 +99,9 @@ python -m packages.app run --question '计算教学文件 sample.txt 的 SHA-256
 
 ### 在同一Demo上补齐V1
 
-添加公开教学证书inspect_certificate，再验证两个工具选择、无须调用工具的请求、多调用、失败反馈、重复提议/预算、Context和最后的NDJSON。下面目标1/2能力表和详细任务用于逐项补齐，不要求第一个摘要Demo包含所有这些行为。V1通过也不代表M1全技术组毕业：AEAD练习留V4。
+添加公开教学证书inspect_certificate，再验证两个工具选择、无须调用工具的请求、多调用、失败反馈、重复提议/预算、Context和最后的NDJSON。下面目标1/2能力表和详细任务用于逐项补齐，不要求第一个摘要Demo包含所有这些行为。V1通过也不代表目标1全表完成：AEAD练习留V4。
 
-**当前切片**：目标1只读20h与目标2全部45h。先按第一个Demo完成M1 01/03–05/07和08–13的必要切片，再补M1 02与完整只读范围；M1 06和M1 07写范围留V4。小用例从现在登记，不接RAG/MCP，不提前开放写操作。
+**当前切片**：目标1只读20h与目标2全部45h。先按第一个Demo完成T001/T003–T005/T007和T008–T013的必要切片，再补T002与完整只读范围；T006和T007写范围留V4。小用例从现在登记，不接RAG/MCP，不提前开放写操作。
 
 **目标**：从“我能直接调用一个工具”发展到“模型选择工具，经执行器校验后调用，结果回到模型”。V1预算65h：只读Python/工具20h、协议/Loop45h。目标1剩5h AEAD练习留V4，届时先直接教学验证再开放审批写动作。
 
@@ -107,7 +109,7 @@ python -m packages.app run --question '计算教学文件 sample.txt 的 SHA-256
 
 **进入条件**：V0通过。V1学习只读工具20h，V4再用5h做受控AEAD练习；25h含约10h最小Python/HTTP地基，不重复计费。
 
-**Agent目标**：工具输出可预测、输入受控、失败能回传，模型不直接访问系统。 对应详细任务：**M1 01–07**。
+**Agent目标**：工具输出可预测、输入受控、失败能回传，模型不直接访问系统。 对应详细任务：**T001–T007**。
 
 **技术点掌握程度标准**
 
@@ -119,13 +121,13 @@ python -m packages.app run --question '计算教学文件 sample.txt 的 SHA-256
 | 资源/唯一入口 | 模型给ID，服务端给路径、权限与秘密 | registry注册只读工具，execute_tool解析授权资源 | 未知工具、越界路径、跨项目资源拒绝并审计 | 正常与拒绝调用记录 | 任意脚本执行不开放 |
 | 测试/脱敏/密码练习 | 独立对照与同实现测试的区别 | 关联run/call，做教学材料AEAD往返与认证失败 | 私钥/口令/明文不进ToolResult或Trace | 正反用例与日志审查 | 大文件流加密 |
 
-**学习与实现顺序**：①补最小Python地基；②先直接调用摘要Provider，摘要Demo通过后补证书解析；③封装输入输出/能力检查；④registry与资源授权；⑤失败与超时；⑥受控小文件密码原语练习。AEAD练习不通过Agent开放写动作，正式审批在M4落实。
+**学习与实现顺序**：①补最小Python地基；②先直接调用摘要Provider，摘要Demo通过后补证书解析；③封装输入输出/能力检查；④registry与资源授权；⑤失败与超时；⑥受控小文件密码原语练习。AEAD练习不通过Agent开放写动作，正式审批在V4落实。
 
 **必须独立回答**：为什么空结果不是异常？模型为什么不能传真实路径？协程超时为什么不等于外部进程结束？
 
 **独立练习**：新增一个允许的输入字段，自己调整schema和正常/非法用例；制造超时并确认进程与临时资源被清理。
 
-**退出条件**：证书解析与摘要可直接运行；输入/资源/输出/超时反例齐全；教学密码练习满足密码工具合同标准。当前字段与目标字段按结构文档§4.1映射，不能声称规划字段已存在；V1先签收只读切片，V4补齐AEAD后才标记m1-tools-done。
+**退出条件**：证书解析与摘要可直接运行；输入/资源/输出/超时反例齐全；教学密码练习满足密码工具合同标准。当前字段与目标字段按[当前代码与目标契约映射](#contract-4-41-当前代码与目标契约的映射)核对，不能声称规划字段已存在；V1先签收只读切片，V4补齐AEAD后才可认定目标1全表通过。
 
 **具体实践与逐项操作**
 
@@ -139,38 +141,38 @@ python -m packages.app run --question '计算教学文件 sample.txt 的 SHA-256
 | Python 函数、类型与模块 | 用函数与小模块分开 adapter/handler/executor；写清参数和返回类型，理解类型提示不会自动校验运行时输入 | 不接模型调用一个工具；独立增加大小上限，说明改动涉及哪些模块 | 元类、复杂继承、泛型框架设计 |
 | Pydantic 与 JSON Schema | 为工具定义必填字段、范围和枚举；明确缺失值、null、默认值与类型转换策略 | 合法输入通过，缺字段/错误类型/策略外值在执行前拒绝；核对导出的 schema | 自定义 schema 生成器、复杂模型继承 |
 | 字节、文本与编码 | 区分 bytes、UTF-8、hex、Base64；摘要针对实际字节，编码仅用于表示 | 对同一测试文件核对长度与摘要；用非 ASCII 输入验证编码，拒绝坏编码 | 通用二进制协议与高性能编码 |
-| 异常与 ToolResult | 区分业务拒绝、工具失败、超时、程序缺陷；成功空结果不当错误；返回可序列化且有错误码 | M1 01、05 的正常/失败结果，原始异常只在受控排错位置留存并脱敏 | 全局异常框架、复杂错误层级 |
+| 异常与 ToolResult | 区分业务拒绝、工具失败、超时、程序缺陷；成功空结果不当错误；返回可序列化且有错误码 | T001、T005 的正常/失败结果，原始异常只在受控排错位置留存并脱敏 | 全局异常框架、复杂错误层级 |
 | Registry 与执行入口 | 由注册表查固定工具；所有调用先校验资源与参数再执行，模型不直接调 handler | 未知工具、不存在/越权资源的拒绝记录；证明对应 adapter 未被调用 | 插件自动发现后置到 MCP；大规模工具注册 |
 | async/await 与进程调用 | 解释等待和阻塞；固定程序/参数数组调用 CLI；设置超时、输出上限，取消后清理子进程 | 正常执行、超时和输出超限；检查超时后进程结束，解释为何等待超时不等于杀进程 | 高吞吐并发调优、复杂进程池 |
 | 日志与 Trace | 关联 run/step/tool、耗时与错误；输出足以排错且不含秘密、文件明文 | 用一条成功和一条失败 Trace 还原调用路径，并检查秘密字段处理 | 分布式追踪平台与完整监控栈 |
-| pytest fixtures 与参数化 | 自己构造小型受控资源；测试正常、边界和失败行为，区别 mock 与真实 provider 验证 | M1 07 的行为断言；mock 超时测试与 provider smoke 分别留证据 | 追求覆盖率数字、测试框架扩展 |
-| 密码 Provider 适配 | 统一输出而不掩盖 provider 差异；能完成证书解析、摘要和受控加解密并核对失败行为 | M1 02、03、06 结果；细项按密码工具合同的 Provider 与结果契约表验证 | 算法内部实现、完整 PKI、HSM |
+| pytest fixtures 与参数化 | 自己构造小型受控资源；测试正常、边界和失败行为，区别 mock 与真实 provider 验证 | T007 的行为断言；mock 超时测试与 provider smoke 分别留证据 | 追求覆盖率数字、测试框架扩展 |
+| 密码 Provider 适配 | 统一输出而不掩盖 provider 差异；能完成证书解析、摘要和受控加解密并核对失败行为 | T002、T003、T006 结果；细项按密码工具合同的 Provider 与结果契约表验证 | 算法内部实现、完整 PKI、HSM |
 
 | 顺序 | 任务与学习内容 | 待实现位置或职责 | 完成后检查 |
 |---|---|---|---|
-| M1 01 | 读 core 的 ToolResult/ToolSpec，理解参数模型、成功与错误 | `packages/core` | 空结果是成功；错误有 code/message，输出可序列化 |
-| M1 02 | 先不用模型，解析一张公开测试证书 | OpenSSL adapter、证书工具 | subject/issuer/serial/有效期/用途等字段与 CLI 对照 |
-| M1 03 | 计算授权文件 SHA-256，后补 SM3 | provider adapter、摘要工具 | 已知测试向量与直接工具输出一致 |
-| M1 04 | 写 registry 和唯一 `execute_tool` 入口 | registry/executor | 未知工具、非法参数、越权文件在执行前拒绝 |
-| M1 05 | 统一错误和日志，学习真正的进程超时清理 | adapter/executor | 超时后子进程结束；输出有上限；日志无秘密 |
-| M1 06 | 在受控练习中封装小文件加解密 | OpenSSL/GmSSL adapter | 往返一致；修改密文后认证失败；不覆盖原文件 |
-| M1 07 | 为工具正常和失败行为写独立验证 | `tools/tests` | 反例触发预期拒绝，所有路径走执行器 |
+| T001 | 读 core 的 ToolResult/ToolSpec，理解参数模型、成功与错误 | `packages/core` | 空结果是成功；错误有 code/message，输出可序列化 |
+| T002 | 先不用模型，解析一张公开测试证书 | OpenSSL adapter、证书工具 | subject/issuer/serial/有效期/用途等字段与 CLI 对照 |
+| T003 | 计算授权文件 SHA-256，后补 SM3 | provider adapter、摘要工具 | 已知测试向量与直接工具输出一致 |
+| T004 | 写 registry 和唯一 `execute_tool` 入口 | registry/executor | 未知工具、非法参数、越权文件在执行前拒绝 |
+| T005 | 统一错误和日志，学习真正的进程超时清理 | adapter/executor | 超时后子进程结束；输出有上限；日志无秘密 |
+| T006 | 在受控练习中封装小文件加解密 | OpenSSL/GmSSL adapter | 往返一致；修改密文后认证失败；不覆盖原文件 |
+| T007 | 为工具正常和失败行为写独立验证 | `tools/tests` | 反例触发预期拒绝，所有路径走执行器 |
 
-M1 02 的第一轮只读本地文件，先不连接真实站点，不扫描网络。读文件用服务端解析出的获授权资源，不让模型任意传系统路径。CLI 封装使用固定程序和参数数组，不把模型字符串拼成 shell 命令。
+T002 的第一轮只读本地文件，先不连接真实站点，不扫描网络。读文件用服务端解析出的获授权资源，不让模型任意传系统路径。CLI 封装使用固定程序和参数数组，不把模型字符串拼成 shell 命令。
 
-M1 06 的详细条件见本阶段密码工具合同：nonce 由服务端生成并管理，工具只接受 key_id；写操作暂只在明确确认的学习脚本中调用，不开放无人审批的 Agent 自动写入。加解密的明文是小型 synthetic 测试文件；输出是受控文件句柄，不把明文或密钥作为 ToolResult 回传。
+T006 的详细条件见本阶段密码工具合同：nonce 由服务端生成并管理，工具只接受 key_id；写操作暂只在明确确认的学习脚本中调用，不开放无人审批的 Agent 自动写入。加解密的明文是小型 synthetic 测试文件；输出是受控文件句柄，不把明文或密钥作为 ToolResult 回传。
 
 本项目工具只封装固定密码功能，模型不获得任意脚本或shell执行入口。
 
 **此目标的验收指标**：适配层与执行器的确定性检查全部通过；正常输入、未知工具、错误参数、不存在资源、越权资源、超时、输出超限均有证据。每个秘密字段都能指出存储位置、访问者与日志处理。测试数量服务于这些行为，不能用“写了十个测试”替代覆盖。
 
-**独立练习**：为工具增加文件大小上限，证明边界值可接受、超出被拒绝；不改为无限制读取。能解释adapter/handler/executor后先签收V1只读切片；V4补M1 06与写工具验证且目标1全表通过，才标记m1-tools-done。
+**独立练习**：为工具增加文件大小上限，证明边界值可接受、超出被拒绝；不改为无限制读取。能解释adapter/handler/executor后先签收V1只读切片；V4补T006与写工具验证后，再核对目标1全表。
 
 ### 目标2：LLM 协议、Context 与手写 Loop（45h）
 
 **进入条件**：只读工具直接调用通过。
 
-**Agent目标**：亲自理解观察→提议→执行→回传→停止，再使用框架。运行设计见本阶段Agent运行机制。 对应详细任务：**M1 08–13**。
+**Agent目标**：亲自理解观察→提议→执行→回传→停止，再使用框架。运行设计见本阶段Agent运行机制。 对应详细任务：**T008–T013**。
 
 **技术点掌握程度标准**
 
@@ -188,7 +190,7 @@ M1 06 的详细条件见本阶段密码工具合同：nonce 由服务端生成�
 
 **独立练习**：亲自修改MAX_STEPS或允许工具池，解释终止差异；根据真实Trace修复一次工具反馈错误。
 
-**退出条件**：能脱离框架解释和修改初版Loop；流式/非流式均通过正常、失败与预算验证；保留脱敏Trace并开始收集评测草稿，V1签收目标2；m1-done须等V4目标1剩余练习完成。
+**退出条件**：能脱离框架解释和修改初版Loop；流式/非流式均通过正常、失败与预算验证；保留脱敏Trace并开始收集评测草稿，V1签收目标2；目标1的剩余练习到V4验收。
 
 **具体实践与逐项操作**
 
@@ -199,21 +201,21 @@ M1 06 的详细条件见本阶段密码工具合同：nonce 由服务端生成�
 
 | 技术点 | 本阶段必须能独立做到 | 练习与验收证据 | 可后置内容 |
 |---|---|---|---|
-| httpx 与模型客户端 | 实现一次非流式调用；区分网络失败、HTTP 错误、响应解析失败与模型未选择工具 | M1 08 的请求/响应和分类错误，能从原始响应定位问题 | 多模型网关、复杂重试中间件 |
-| Messages 与 Tool Calling | 说明四类角色作用；构造工具 schema，读取调用建议，经执行器执行后回传实际结果 | 画 M1 09–10 消息序列；参数、工具消息与后续回答可逐条核对 | 微调、模型训练、复杂提示词优化 |
-| 手写 Agent Loop | 自己写有限循环；覆盖无工具、单步、多步、失败反馈；停止状态明确 | M1 11 的不同路径 Trace，能解释每轮为何继续或退出 | 多 Agent 协作、自动规划框架 |
-| 上下文、token 与预算 | 解释上下文长度与输出预算；限制步骤、总 deadline 和结果体积，不把秘密加入上下文 | 确定性触发预算退出与重复动作保护，记录原因；不以改大上限掩盖死循环 | 长上下文策略与压缩实验在 M5 学 |
-| NDJSON 流式解析 | 区分网络 chunk 与完整记录；增量处理 UTF-8 与残片，按锁定协议收集内容/工具调用 | M1 13 切块验证；正常结束、残帧和中断可定位，不混用 SSE 解析器 | 多供应商流协议适配 |
+| httpx 与模型客户端 | 实现一次非流式调用；区分网络失败、HTTP 错误、响应解析失败与模型未选择工具 | T008 的请求/响应和分类错误，能从原始响应定位问题 | 多模型网关、复杂重试中间件 |
+| Messages 与 Tool Calling | 说明四类角色作用；构造工具 schema，读取调用建议，经执行器执行后回传实际结果 | 画 T009–T010 消息序列；参数、工具消息与后续回答可逐条核对 | 微调、模型训练、复杂提示词优化 |
+| 手写 Agent Loop | 自己写有限循环；覆盖无工具、单步、多步、失败反馈；停止状态明确 | T011 的不同路径 Trace，能解释每轮为何继续或退出 | 多 Agent 协作、自动规划框架 |
+| 上下文、token 与预算 | 解释上下文长度与输出预算；限制步骤、总 deadline 和结果体积，不把秘密加入上下文 | 确定性触发预算退出与重复动作保护，记录原因；不以改大上限掩盖死循环 | 长上下文策略与压缩实验在 V6 学 |
+| NDJSON 流式解析 | 区分网络 chunk 与完整记录；增量处理 UTF-8 与残片，按锁定协议收集内容/工具调用 | T013 切块验证；正常结束、残帧和中断可定位，不混用 SSE 解析器 | 多供应商流协议适配 |
 | 失败反馈与重试 | 明确哪些只读失败可有限重试，哪些写动作不能凭模型建议重跑；缺参数能澄清 | 工具失败、缺信息、重复建议的 Trace 与执行计数 | 通用自主纠错与复杂重规划 |
 
 | 顺序 | 学习任务 | 输入与预期行为 | 验收证据 |
 |---|---|---|---|
-| M1 08 | 用 httpx 写非流式客户端 | 普通问题→原始 JSON→提取回答 | 请求、响应与异常记录 |
-| M1 09 | 给模型只暴露一个只读工具 | Demo先用“计算教学文件摘要”→digest_file建议；第二工具后用“检查这个 certificate_id 的有效期”→证书工具建议 | tools schema 与实际 arguments |
-| M1 10 | 手写一次调用结果回传 | tool call→execute_tool→tool message→再次请求 | 完整多轮消息与真实工具结果 |
-| M1 11 | 扩成有限循环 | 无工具问题、一次调用、多次调用、工具失败 | 逐 step Trace 与最终状态 |
-| M1 12 | 加预算与拒绝规则 | 未知工具、重复调用、超过步骤/deadline | 退出原因可见；不一直重试 |
-| M1 13 | 最后实现原生流式解析 | NDJSON 按实际协议解析，累积内容与完整调用 | 原始 NDJSON 与切块测试 |
+| T008 | 用 httpx 写非流式客户端 | 普通问题→原始 JSON→提取回答 | 请求、响应与异常记录 |
+| T009 | 给模型只暴露一个只读工具 | Demo先用“计算教学文件摘要”→digest_file建议；第二工具后用“检查这个 certificate_id 的有效期”→证书工具建议 | tools schema 与实际 arguments |
+| T010 | 手写一次调用结果回传 | tool call→execute_tool→tool message→再次请求 | 完整多轮消息与真实工具结果 |
+| T011 | 扩成有限循环 | 无工具问题、一次调用、多次调用、工具失败 | 逐 step Trace 与最终状态 |
+| T012 | 加预算与拒绝规则 | 未知工具、重复调用、超过步骤/deadline | 退出原因可见；不一直重试 |
+| T013 | 最后实现原生流式解析 | NDJSON 按实际协议解析，累积内容与完整调用 | 原始 NDJSON 与切块测试 |
 
 初版 Loop 由你手写，先画伪代码和消息流，再让 AI 审查。它必须先通过非流式任务，才能加流式。原生 Ollama 流使用 NDJSON，后续前端使用 SSE，解析器分别实现；原生工具回传用 `role:tool` 与 `tool_name`，应用自己生成调用关联 ID。arguments 的实际形状从锁定版本的 Trace 验证，不能先假设它是字符串 delta。参见 [Ollama 工具调用](https://docs.ollama.com/capabilities/tool-calling) 与 [流式协议](https://docs.ollama.com/api/streaming)。
 
@@ -231,7 +233,7 @@ MAX_STEPS、总 deadline 和 token/输出预算必须有配置。工具是否重
 
 **独立练习**：把证书检查增加一个必填 `purpose` 参数。信息不足时让系统澄清，完整输入能通过；你能定位 schema、模型说明、执行器与测试要改的地方。
 
-保存脱敏原始Trace和五问说明，签收目标2及V1。下一步V2给Loop加JSON API和基础网页；m1-done须V4补齐目标1后创建。
+保存脱敏原始Trace和五问说明，签收目标2及V1。下一步V2给Loop加JSON API和基础网页；目标1全表须V4补齐后再认定通过。
 
 ## 本阶段的接口与实践细节
 
@@ -243,36 +245,48 @@ MAX_STEPS、总 deadline 和 token/输出预算必须有配置。工具是否重
 
 ```text
 Agent-development-code/
-  pyproject.toml / uv.lock / .env.example / tasks.sh
-  infra/compose.yml / migrations/ / dockerfiles/
-  src/lpa/
-    core/         Pydantic 契约、枚举、纯计算；无外部 IO
-    config/       Settings、日志配置与脱敏
-    llm/          Ollama 原生 NDJSON adapter；兼容端点单独 adapter
-    db/           ORM、短事务 repositories、授权视图
-    security/     policy、executor、审批校验、审计接口
-    crypto/       OpenSSL/GmSSL adapters、能力探测、keystore接口
-    tools/        registry、密码/知识工具与 handler
-    ingest/       解析、版本化 chunk 与 index manifest
-    retrieval/    dense、sparse、fusion、rerank、rewrite
-    mcp_adapter/  MCP client、canonical tool bridge、连接配置
-    graph/        State、节点、checkpoint、resume
-    memory/       提取、授权、更新、去重
-    verifier/     事实/引用/输出检查
-    api/          FastAPI assembly、资源路由、SSE
-    worker/       持久化任务、lease、取消和结果核对
-  minimal_agent/  M1 手写版本；从同一 tools/executor 调用
-  mcp_servers/    fs/db/domain；独立 entrypoint
-  web/           前端
-  eval/          Schema、fixtures、scenario runner、metrics、compare
-  tests/         合同、故障和集成测试
-  docs/decisions/ / docs/progress.md / docs/to-digest.md
-  reports/ / data/（不提交真实数据/秘密）
+  README.md / AGENTS.md / pyproject.toml / uv.lock / .env.example
+  packages/
+    app/                      已有agent.py Loop与交互、cli.py单次入口
+    core/                     已有类型、配置、错误与日志
+    llm/                      已有client.py模型请求；streaming.py待实现
+    crypto/
+      providers/              已有gmssl_cli.py SM2调用；openssl_cli.py待实现
+      keystore.py             已有教学SM2密钥生成与查找
+    security/                 待实现：policy.py、resources.py、approvals.py
+    db/                       待实现：models.py、session.py
+      migrations/             应用数据库迁移
+      repository/             资源、Run、审批与审计读写
+      queries/                固定查询
+  tools/                      已有registry.py参数校验、executor.py MCP调用
+  mcp_integration/
+    client/                   已有connection.py连接、bridge.py工具发现
+    common/                   待实现：mapping.py
+    server_crypto/            已有server.py服务入口
+      gmssl_tools/sm_tools.py  已有SM2工具包装与注册
+      openssl_tools/tools.py  待实现：OpenSSL工具包装与注册
+    server_fs/                受控文件服务预留目录
+    server_db/                固定查询服务预留目录
+  graph/nodes/                Graph编排、审批与恢复预留目录
+  pipelines/                  ingest/、retrieval/、citation/预留目录
+  memory/                     跨会话记忆预留目录
+  verifier/                   checks/、tests/预留目录
+  services/                   agent_api/main.py与routers/；agent_worker/预留
+  web/src/                    前端预留目录
+  infra/                      dockerfiles/、init/预留目录
+  eval/                       datasets/与待实现的runner.py
+  reports/                    报告与图表
+  tests/                      现有入口、目录合同、Demo与SM2测试
+  scripts/                    selftest.py、layout.json
+  data/<file_id>/             本地输入文件与密码产物，Git忽略
+  keys/<key_id>/              本地教学密钥，Git忽略
 ```
 
-Python 包使用合法可导入名称，不把 `agent-api` 目录当 import package，也不使用 `mcp` 顶级包名遮蔽第三方 SDK。M1 可以只建 core/config/tools/llm/minimal_agent。工具包默认在同一个可安装项目内；确需独立发布时再定义 workspace 包和依赖。
+上表反映目录职责；待实现文件仅含模块说明，预留目录不代表业务已完成。完整树与运行方式见[代码README](../../Agent-development-code/README.md)。以后新增数据统一放在代码仓库根目录的 `data/<file_id>/`，密钥放在 `keys/<key_id>/`；不再使用 `data/SM2/` 或按算法分类的密钥目录。旧数据不会自动迁移。Graph State/workflow、前端配置与Compose配置由后续功能引入。
 
-core 不依赖 IO 层；llm/db 依赖 core；tools 通过注入 ports 使用 db/retrieval/crypto；graph 编排上述模块；api/worker 装配。executor 调 handler，handler 不回调 graph/api。使用 AST/import-linter 检查分层与唯一 handler 调用点，不用简单 grep 作为安全证明。
+Python包使用合法可导入名称，避免顶级`mcp`遮蔽第三方SDK。工具包默认在同一个可安装项目内；确需独立发布时再定义独立包与依赖。后续在现有模块逐步扩展，每次按受影响调用链回归。
+
+目标依赖方向：`packages/core`不反向依赖业务模块；`tools/executor.py`负责统一执行控制，分派本地工具或经MCP客户端调用服务。Crypto MCP工具完成服务端资源检查后调用`packages/crypto/providers/`的Python函数，由Provider执行已编译的程序。Provider不依赖模型、Loop或MCP；`tools/builtin/`只按需放本地工具，不重复实现同一套MCP密码能力。Graph负责编排，API/worker负责装配，handler不回调Graph/API。分层与唯一执行入口在实现后用AST/import-linter及行为测试验证。
 
 <a id="contract-4"></a>
 <a id="contract-4-4-工具与唯一执行入口"></a>
@@ -343,15 +357,15 @@ query_database输入为固定query_id与结构化参数，查询只返回获授�
 
 | 当前骨架 | 目标语义/字段 | 学习者的迁移任务 |
 |---|---|---|
-| ToolSpec.name | canonical tool_id | M1保留name作为注册键；M4明确适配并锁定canonical映射，避免两个名称漂移 |
+| ToolSpec.name | canonical tool_id | V1保留name作为注册键；V4明确适配并锁定canonical映射，避免两个名称漂移 |
 | ToolSpec.retry | max_retries与幂等策略 | 当前非只读retry=0保持；增加idempotent与本地许可，不能从read_only自动推断可重试 |
-| 尚无独立version字段 | tool version | 初期registry配置记录版本，M4写入Spec/action/approval/runtime快照，变更审批必须失效 |
-| ToolResult.citations，当前Citation为文档型 | 通用evidence_refs及知识Citation | M1按现有citations验证；M3/M4设计文档证据与工具结果引用转换，不把artifact伪造为文档页码 |
+| 尚无独立version字段 | tool version | 初期registry配置记录版本，V4写入Spec/action/approval/runtime快照，变更审批必须失效 |
+| ToolResult.citations，当前Citation为文档型 | 通用evidence_refs及知识Citation | V1按现有citations验证；V5设计文档证据，V4设计工具结果引用转换，不把artifact伪造为文档页码 |
 | ToolCall.tool_name/call_id | canonical tool_id与内部call关联 | ModelClient/bridge显式转换，原生tool_name与应用内部ID分别保存 |
 | source/mcp_server | 工具来源/受信任Server关联 | 保留追踪，本地policy不信任外部annotation |
 | 当前RiskLevel枚举 | 0–4本地风险语义 | 数值/名字差异显式映射，敏感解密与写动作按V4固定审批政策，不因名字自动降级 |
 
-新增idempotent、version或evidence_refs前先定义读取旧记录的行为；迁移后的输出与评测schema必须一致。样例的泛型Pydantic ToolResult是共同方向，不要求为M1先改动全部成熟契约。没有通用证据字段时明确只支持文档引用范围，不能伪称已覆盖全部Verifier来源。
+新增idempotent、version或evidence_refs前先定义读取旧记录的行为；迁移后的输出与评测schema必须一致。样例的泛型Pydantic ToolResult是共同方向，不要求为V1先改动全部成熟契约。没有通用证据字段时明确只支持文档引用范围，不能伪称已覆盖全部Verifier来源。
 
 <a id="agent-1"></a>
 <a id="agent-1-1-先区分三个角色"></a>
@@ -419,46 +433,45 @@ Ollama原生`/api/chat`的工具反馈使用`role:tool`与`tool_name`；保存as
 <a id="crypto-3.1-31-openssl"></a>
 #### OpenSSL
 
-采用两种入口但统一业务结果：
+当前采用编译后的OpenSSL CLI，后续在`openssl_cli.py`封装经独立验证的摘要、证书解析等能力。固定可执行文件与参数数组，处理错误码、stderr、超时和输出上限；MCP工具调用封装函数，不各自拼命令。
 
-- CLI：公开证书解析、检查、辅助独立对照。固定可执行文件与参数数组，确认错误码、stderr、超时和版本。
-- 库 API：Python 可通过 `cryptography` 使用 OpenSSL-backed 密码能力与 X.509 解析。锁定包版本与其实际后端版本，不把系统 CLI 版本当作 Python 后端版本。
+Python的`cryptography`库路线保留为可选扩展；采用时须单独验证依赖与实际OpenSSL后端，不能拿系统CLI版本代替。
 
-文件认证加密起点采用 AES-GCM。它同时保护密文机密性与完整性，同一密钥下不得复用 nonce；错误 key/nonce/AAD/tag 均应导致认证失败。选定接口和限制以 [cryptography AEAD 文档](https://cryptography.io/en/stable/hazmat/primitives/aead/) 为准。不要把裸 CBC 或 `openssl enc` 方案当成同等认证加密接口。
+V4的认证加密目标优先评估AES-GCM，但必须先确认选定可执行程序提供可用的认证加密接口；若缺失，明确登记能力缺口或另行选择已验证的认证加密方案，不能因为Provider已建立就宣称支持。AES-GCM同时保护密文机密性与完整性，同一密钥下不得复用nonce；错误key/nonce/AAD/tag均应导致认证失败。如后续选择Python库路线，接口和限制参考[cryptography AEAD文档](https://cryptography.io/en/stable/hazmat/primitives/aead/)。不要把裸CBC或`openssl enc`方案当成同等认证加密接口。
 
 证书操作参见 [OpenSSL x509](https://docs.openssl.org/3.0/man1/openssl-x509/)、[verify](https://docs.openssl.org/3.0/man1/openssl-verify/) 与 [X.509 教程](https://cryptography.io/en/stable/x509/tutorial/)。只解析成功不能推出证书可信。
 
 **技术点掌握程度标准**
 
-以下表格细化主指南中的密码领域任务。Phase 0 只要求识别路线、版本和待验证能力；M1 才完成只读工具与受控练习，M4 再开放审批后的写操作。表格是后续学习目标，不表示能力已经实现。
+以下表格细化密码领域任务。V0只要求识别路线、版本和待验证能力；V1完成只读工具，V4进行受控加密练习并开放经审批的写操作。表格是后续学习目标，不表示能力已经实现。
 
 | 技术点与阶段 | 本阶段必须能独立做到 | 练习与验收证据 | 可后置内容 |
 |---|---|---|---|
-| OpenSSL CLI（Phase 0→M1） | 查 version/help 与程序路径；用固定参数完成摘要和证书检查；解释 exit code/stderr，控制超时 | 公开样本结果与 adapter 对照，正常/坏输入/超时分开记录 | 通读源码、engine/provider 插件开发 |
-| cryptography 与后端（M1） | 调用选定的摘要、AEAD、X.509 接口；记录 Python 包与实际后端，统一业务字段 | Python 后端记录与已知向量/CLI 对照，不根据系统 CLI 版本推断后端 | 直接封装全部 OpenSSL C API |
-| Provider 契约（M1） | 将不同入口转成同一 ToolResult；保留实际算法/profile/provider，不把能力缺失当成功 | 同一证书两入口字段一致；不支持能力返回明确错误 | 通用跨语言密码插件框架 |
-| 范围与独立对照（M1→M4） | 先封装选定的少量功能；区分工具正确、应用授权正确与证书信任成立 | 每项功能有独立结果及失败记录；写操作另有 M4 审批与执行证据 | 完整 PKI、TLS 协议与生产密码服务认证 |
+| OpenSSL CLI（V0→V1） | 查 version/help 与程序路径；用固定参数完成摘要和证书检查；解释 exit code/stderr，控制超时 | 公开样本结果与 adapter 对照，正常/坏输入/超时分开记录 | 通读源码、engine/provider 插件开发 |
+| cryptography与后端（可选扩展，采用时验收） | 调用选定的摘要、AEAD、X.509 接口；记录 Python 包与实际后端，统一业务字段 | Python 后端记录与已知向量/CLI 对照，不根据系统 CLI 版本推断后端 | 直接封装全部 OpenSSL C API |
+| Provider 契约（V1） | 将不同入口转成同一 ToolResult；保留实际算法/profile/provider，不把能力缺失当成功 | 封装结果与独立CLI结果一致；不支持能力返回明确错误 | 通用跨语言密码插件框架 |
+| 范围与独立对照（V1→V4） | 先封装选定的少量功能；区分工具正确、应用授权正确与证书信任成立 | 每项功能有独立结果及失败记录；写操作另有 V4 审批与执行证据 | 完整 PKI、TLS 协议与生产密码服务认证 |
 
 <a id="crypto-3.2"></a>
 <a id="crypto-3.2-32-gmssl"></a>
 #### GmSSL
 
-采用 [GmSSL 官方 C 库](https://github.com/guanzhi/GmSSL) 与 [官方 GmSSL-Python 绑定](https://github.com/GmSSL/GmSSL-Python)，也可将少量操作封装为官方 CLI。绑定分发名是 `gmssl-python`，导入名为 `gmssl`，需要可加载的 `libgmssl` 动态库；同名的其他 Python 实现不是这个绑定。
+当前采用[GmSSL官方源码](https://github.com/guanzhi/GmSSL)编译得到的CLI；后续由`gmssl_cli.py`提供固定功能函数，`mcp_integration/server_crypto/gmssl_tools/sm_tools.py`负责MCP包装与注册。[官方GmSSL-Python绑定](https://github.com/GmSSL/GmSSL-Python)仅作为后续可选路线；采用时再核对分发包、共享库与接口版本。
 
-先做 SM3，再做 SM2 签名验签；SM4-GCM 在**锁定的 C 库和绑定实际支持且验证通过**后接入。不能因为 README 描述了接口就认定你安装的版本一定有它，也不能在不支持时静默改成 SM4-CBC。官方绑定文档说明 SM2 证书生成/签发需要库或 CLI 的其他接口，不能假设 `Sm2Certificate` 能完成全部 CA 功能。[GmSSL-Python 接口与安装说明](https://github.com/GmSSL/GmSSL-Python)
+新部件先从SM3封装练起，再迁移已有SM2签名验签；SM4-GCM在**锁定的CLI实际支持且验证通过**后接入。不能因为README描述了接口就认定安装的版本一定有它，也不能在不支持时静默改成SM4-CBC。证书解析、验证、CSR与签发分别核对所选CLI的能力，不把解析成功等同于具备全部CA功能。
 
-源码依赖记录 release/tag 或 commit、来源、构建参数与测试结果。C 库先在独立前缀或受控镜像验证，Python 包加入项目的专用依赖组并进入 lock；不要以一条未锁定的临时 pip 命令作为最终安装流程。编译与provider smoke按阶段任务执行并留存结果。
+源码依赖记录release/tag或commit、来源、构建参数与测试结果。在独立前缀或受控镜像验证CLI；若采用Python绑定，再将包加入专用依赖组并进入lock，不以未锁定的临时pip命令作为最终安装流程。编译与Provider smoke按阶段任务执行并留存结果。
 
 **技术点掌握程度标准**
 
 | 技术点与阶段 | 本阶段必须能独立做到 | 练习与验收证据 | 可后置内容 |
 |---|---|---|---|
-| 源码、CMake 与安装前缀（Phase 0→M1） | 理解源码/构建/安装目录区别，固定 commit/tag；按官方流程在受控前缀构建与测试 | 同级 GmSSL 仓库位置、构建参数、测试结果和安装路径记录 | C 语言全套课程、编译器与链接器内部原理 |
-| 动态库与 Python 绑定（M1） | 区分分发名/导入名/共享库；能定位实际模块与库版本，排查找不到库或同名包混装 | 导入与版本记录、一次加载问题的定位；依赖进入 crypto 组与 lock | 自己写 ctypes/cffi 绑定 |
-| SM3 摘要（M1） | 对实际字节计算摘要，核对已知向量，统一编码与文件版本 | 与独立期望一致；改输入后摘要变化，坏资源在执行前拒绝 | 实现压缩函数与密码分析 |
-| SM2 签名验签（M1 练习→M4 写操作） | 固定用户 ID、摘要/编码和 scheme；正确/错误公钥、签名、输入与 profile 有明确结果 | 固定 profile 的正反结果与独立对照；Agent 签名经审批执行 | 曲线数学推导、国密 TLS |
-| SM4-GCM 能力探测（M1 或后续扩展） | 先验证锁定库/绑定支持；支持时再按认证加密表接入，缺失时明确禁用且不静默降级 | 能力清单与 smoke；未支持记“未接入”，不阻塞已选 AES-GCM 闭环 | 为学习版补全绑定 API、复杂流式加密 |
-| SM2 证书能力范围（M4 或扩展） | 分清解析/验证/CSR/签发的具体接口，不把一个证书类当全部 CA 能力 | 选定路线记录；未实现能力在工具列表中不宣称支持 | 完整国密 CA 与证书互操作体系 |
+| 源码、CMake 与安装前缀（V0→V1） | 理解源码/构建/安装目录区别，固定 commit/tag；按官方流程在受控前缀构建与测试 | 同级 GmSSL 仓库位置、构建参数、测试结果和安装路径记录 | C 语言全套课程、编译器与链接器内部原理 |
+| 动态库与Python绑定（可选扩展，采用时验收） | 区分分发名/导入名/共享库；能定位实际模块与库版本，排查找不到库或同名包混装 | 导入与版本记录、一次加载问题的定位；依赖进入 crypto 组与 lock | 自己写 ctypes/cffi 绑定 |
+| SM3 摘要（V1） | 对实际字节计算摘要，核对已知向量，统一编码与文件版本 | 与独立期望一致；改输入后摘要变化，坏资源在执行前拒绝 | 实现压缩函数与密码分析 |
+| SM2 签名验签（V1练习→V4写操作） | 固定用户 ID、摘要/编码和 scheme；正确/错误公钥、签名、输入与 profile 有明确结果 | 固定 profile 的正反结果与独立对照；Agent 签名经审批执行 | 曲线数学推导、国密 TLS |
+| SM4-GCM 能力探测（V1或后续扩展） | 先验证锁定CLI支持；支持时再按认证加密表接入，缺失时明确禁用且不静默降级 | 能力清单与smoke；未支持记“未接入”，V4按已验证的认证加密方案验收 | 为学习版补全绑定 API、复杂流式加密 |
+| SM2 证书能力范围（V4或扩展） | 分清解析/验证/CSR/签发的具体接口，不把一个证书类当全部 CA 能力 | 选定路线记录；未实现能力在工具列表中不宣称支持 | 完整国密 CA 与证书互操作体系 |
 
 <a id="crypto-3.3"></a>
 <a id="crypto-3.3-33-能力探测与安装后的最小验证"></a>
@@ -467,9 +480,9 @@ Ollama原生`/api/chat`的工具反馈使用`role:tool`与`tool_name`；保存as
 | 检查 | 要保存什么 | 不能据此声称什么 |
 |---|---|---|
 | OpenSSL CLI version/help | 二进制位置、版本、可用命令 | 不证明 Python 后端同版本 |
-| Python backend version | Python 包与 OpenSSL backend 版本 | 不证明所有算法均可用 |
-| GmSSL C 库 version/self-tests | commit/release、构建与测试记录 | 不证明绑定加载的是同一库 |
-| GmSSL-Python 导入 | 模块路径、绑定与库版本 | 不证明 GCM/证书签发都支持 |
+| Python backend version（采用时） | Python 包与 OpenSSL backend 版本 | 不证明所有算法均可用 |
+| GmSSL CLI version/help与上游测试 | 二进制路径、commit/release、构建与测试记录 | 不证明每项命令或密码模式均已验证 |
+| GmSSL-Python导入（采用时） | 模块路径、绑定与库版本 | 不证明 GCM/证书签发都支持 |
 | 摘要已知向量 | 输入、期望摘要、实际输出 | 不证明所有密码功能正确 |
 | 认证加密/验签 | 往返、认证失败、验签结果 | 不证明应用权限与 keystore 安全 |
 
@@ -483,17 +496,17 @@ provider 的 `capabilities` 来自适配层验证和本地配置，不让模型�
 
 | 工具 | 主要输入 | 返回给 Agent 的内容 | 何时引入 |
 |---|---|---|---|
-| `inspect_certificate` | certificate_id | subject/issuer/serial/SAN/有效期/用途/指纹 | M1 首个业务 |
-| `verify_certificate` | certificate_id/trust_store_id/hostname/purpose | 各检查的 status、错误与检查时钟 | M1 后段或 M2 |
-| `digest_file` | file_id/provider/algorithm | 摘要、编码、文件大小与版本 | M1 |
-| `verify_signature` | file_id/signature_id/public_key_id/scheme | valid/invalid 与方案参数 | M1 后段 |
-| `get_key_metadata` | key_id | provider、用途、版本、状态、归属 | M2 |
-| `encrypt_file` | file_id/key_id/profile | 密文 artifact_id、版本、算法与状态 | 受控练习 M1；正式审批 M4 |
+| `inspect_certificate` | certificate_id | subject/issuer/serial/SAN/有效期/用途/指纹 | V1摘要Demo后的第二只读工具 |
+| `verify_certificate` | certificate_id/trust_store_id/hostname/purpose | 各检查的 status、错误与检查时钟 | V1后段或V2 |
+| `digest_file` | file_id/provider/algorithm | 摘要、编码、文件大小与版本 | V1首个Demo |
+| `verify_signature` | file_id/signature_id/public_key_id/scheme | valid/invalid 与方案参数 | V1后段 |
+| `get_key_metadata` | key_id | provider、用途、版本、状态、归属 | V2 |
+| `encrypt_file` | file_id/key_id/profile | 密文 artifact_id、版本、算法与状态 | V4先受控练习，再经审批开放 |
 | `decrypt_file` | encrypted_artifact_id | 输出 artifact_id 与状态 | 正式开放前完成授权/审批 |
-| `sign_file` | file_id/key_id/scheme | signature artifact_id 与实际方案 | M4 审批 |
-| `rotate_key` | key_id/expected_version | 新旧版本与生命周期状态 | M4 |
-| `create_csr` | 测试私钥引用/subject/SAN | CSR artifact_id 与解析字段 | M4 |
-| `issue_test_certificate` | csr_id/profile | certificate_id/serial/有效期/用途 | M4 测试 CA 选定路线 |
+| `sign_file` | file_id/key_id/scheme | signature artifact_id 与实际方案 | V4审批 |
+| `rotate_key` | key_id/expected_version | 新旧版本与生命周期状态 | V6补齐 |
+| `create_csr` | 测试私钥引用/subject/SAN | CSR artifact_id 与解析字段 | V6补齐 |
+| `issue_test_certificate` | csr_id/profile | certificate_id/serial/有效期/用途 | V6测试CA选定路线 |
 
 `generate_key` 可以作为专门的受控动作或管理 API，首版不必为了工具数量给模型直接开放它。`search_knowledge` 和 `query_database` 是通用学习工具，用于说明和元数据查询。
 
@@ -511,11 +524,11 @@ provider 的 `capabilities` 来自适配层验证和本地配置，不让模型�
 
 | 技术点与阶段 | 本阶段必须能独立做到 | 练习与验收证据 | 可后置内容 |
 |---|---|---|---|
-| PEM/DER 与 X.509 字段（M1） | 识别格式，解析 subject/issuer/serial/SAN/有效期/用途/指纹，不将展示字段当信任结论 | 测试证书与 CLI 字段对照；坏格式明确失败 | ASN.1 全部语法与手写解析器 |
-| 时间、域名与用途（M1→M2） | 按指定时钟/hostname/purpose 检查，说明时区、日期边界与未检查范围 | 固定时钟的有效/过期/未生效结果；域名或用途不符分别报告 | TLS 握手完整实现 |
-| 证书链与 trust store（M1 后段→M2） | 使用指定根与中间链验证，理解自签名样本不等于默认可信；不修改系统信任 | 指定教学 trust store 的成功/缺链/不受信任结果，记录验证条件 | 公共信任根治理、链构建全部边界 |
-| CSR 与测试 CA（M4） | 区分请求与证书；校验允许的 SAN/用途/有效期，限制测试 CA 权限并追踪 serial | 实际签发字段和审批 payload 对照；越范围被程序拒绝 | 公共 CA、ACME、自动续签 |
-| 吊销与检查状态（M1 理解；实现选修） | 说明 CRL/OCSP 目的；未实现吊销检查就返回 not_checked/unknown，不回答“未吊销” | 结果/页面/Agent 解释均保留未检查范围；已实现时另留核对证据 | CRL/OCSP 服务与完整吊销运维 |
+| PEM/DER 与 X.509 字段（V1） | 识别格式，解析 subject/issuer/serial/SAN/有效期/用途/指纹，不将展示字段当信任结论 | 测试证书与 CLI 字段对照；坏格式明确失败 | ASN.1 全部语法与手写解析器 |
+| 时间、域名与用途（V1→V2） | 按指定时钟/hostname/purpose 检查，说明时区、日期边界与未检查范围 | 固定时钟的有效/过期/未生效结果；域名或用途不符分别报告 | TLS 握手完整实现 |
+| 证书链与 trust store（V1后段→V2） | 使用指定根与中间链验证，理解自签名样本不等于默认可信；不修改系统信任 | 指定教学 trust store 的成功/缺链/不受信任结果，记录验证条件 | 公共信任根治理、链构建全部边界 |
+| CSR 与测试 CA（V4） | 区分请求与证书；校验允许的 SAN/用途/有效期，限制测试 CA 权限并追踪 serial | 实际签发字段和审批 payload 对照；越范围被程序拒绝 | 公共 CA、ACME、自动续签 |
+| 吊销与检查状态（V1理解；实现选修） | 说明 CRL/OCSP 目的；未实现吊销检查就返回 not_checked/unknown，不回答“未吊销” | 结果/页面/Agent 解释均保留未检查范围；已实现时另留核对证据 | CRL/OCSP 服务与完整吊销运维 |
 
 下表用于约束结果解释；上表用于判断你是否具备独立操作与排错能力，两者都要满足。
 
@@ -629,9 +642,9 @@ printf 'abc' | gmssl sm3
 
 
 <a id="provider-practice-104-python-绑定与能力检查"></a>
-#### Python 绑定与能力检查
+#### Python绑定与能力检查（可选扩展）
 
-回到应用仓库，在 M1 引入专用 `crypto` extra，并保留当前 m1/dev：
+当前CLI路线不需要本节。只有后续明确采用Python库/绑定时，才回到应用仓库引入`crypto` extra，并保留既有extras；以下是该可选路线的示例：
 
 ```bash
 cd /home/zsw/work/agent_development/Agent-development-code
@@ -666,18 +679,18 @@ print(digest.digest().hex())
 <a id="provider-practice-105-后续同步依赖时保留-crypto-组"></a>
 #### 后续同步依赖时保留 crypto 组
 
-`crypto` 组创建后，M2 使用 `uv sync --extra m1 --extra m2 --extra crypto --extra dev`；M3 加 `--extra m3`，M4 再加 `--extra m4`。只有真正做 reranker 才增加 `ml`。锁文件形成后复现加 `--frozen`，不同阶段选择的 extras 写进运行说明。
+仅在选择绑定路线并创建`crypto`组后，V2使用`uv sync --extra m1 --extra m2 --extra crypto --extra dev`；V5按检索依赖需要加`--extra m3`，V4按工作流需要加`--extra workflow`或兼容的`--extra m4`。这些小写名称是代码仓库现有的依赖组名。当前MCP已在基础依赖中，不需要为它提前引入Graph。只有真正做reranker才增加`ml`。锁文件形成后复现加`--frozen`，不同阶段选择的extras写进代码README。
 
-完成这些练习后，才开始自己实现统一 provider adapter。第一轮只封装证书解析和摘要；输入/输出/异常稳定后再接 execute_tool 和模型。
+当前CLI路线完成程序路径、版本与实际功能验证后，就可开始实现Provider封装，无需先安装Python绑定。第一轮只封装证书解析和摘要；输入/输出/异常稳定后再接执行器与MCP。已有Demo继续使用，等部件可用后逐步迁移。
 
 ## 本阶段签收清单
 
 - [ ] 本阶段学习技术表逐项有本人解释、独立实现/修改和失败验证证据。
-- [ ] Q01–Q22已由本人结合实现作答，证据与未覆盖边界记入docs/progress.md；AI仅审查。
+- [ ] Q01–Q22已由本人结合实现作答，证据与未覆盖边界记入本阶段文末的本人学习记录；AI仅审查。
 
-- [ ] M1 01–05/07只读范围与M1 08–13通过，证书/摘要独立对照。
+- [ ] T001–T005/T007只读范围与T008–T013通过，证书/摘要独立对照。
 - [ ] 本人手写Loop、单多调用/失败/预算/NDJSON可解释，已有少量case。
-- [ ] M1 06和写范围留V4，未提前标m1全目标毕业。
+- [ ] T006和写范围留V4，未提前标m1全目标毕业。
 
 ## 下一步
 

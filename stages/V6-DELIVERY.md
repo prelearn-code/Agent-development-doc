@@ -19,7 +19,7 @@
 
 ## 必须独立回答的关键问题
 
-这些问题必须由你结合自己的实现作答，AI只审查。记录在代码仓库docs/progress.md，写清场景、自己的理由、真实证据与未覆盖边界；只背定义或复制AI答案不算通过。
+这些问题必须由你结合自己的实现作答，AI只审查。记录在本阶段文末的本人学习记录中，写清场景、自己的理由、真实证据与未覆盖边界；只背定义或复制AI答案不算通过。
 
 | 编号 | 必须自己回答的问题 | 回答达到标准所需的说明或证据 |
 |---|---|---|
@@ -56,11 +56,11 @@
 
 | 回看位置 | 本次任务 | 全表完成条件 |
 |---|---|---|
-| 第6.1 API | 目标3剩5h，M2 06–07全链路回归 | 请求/事件/断线/取消/身份合同完整 |
-| 第6.2 DB | 目标4剩10h，M2 13及全部六查询/索引/事务/角色复核 | 时间窗口参数化、llm_calls真实计量与权限证据 |
-| 第8.1执行器 | 目标7剩10h，M4 03轮换、04 CSR/测试签发、06≥50Tool题 | 已开放全部工具实际结果、版本、审批/失败齐全 |
-| 第7.1 MCP | 目标8剩8h，M4 09–10与11新端点 | 三职责Server、Resource/Prompt、两类刷新 |
-| 第8.2 Graph | 目标9剩10h，图/schema兼容与全范围回归；条件性M4 16 | 原pending恢复、未知核对；有worker才竞争/lease/fencing |
+| 第6.1 API | 目标3剩5h，T019–T020全链路回归 | 请求/事件/断线/取消/身份合同完整 |
+| 第6.2 DB | 目标4剩10h，T026及全部六查询/索引/事务/角色复核 | 时间窗口参数化、llm_calls真实计量与权限证据 |
+| 第8.1执行器 | 目标7剩10h，T043轮换、T044 CSR/测试签发、T046的≥50Tool题 | 已开放全部工具实际结果、版本、审批/失败齐全 |
+| 第7.1 MCP | 目标8剩8h，T049–T050与T051新端点 | 三职责Server、Resource/Prompt、两类刷新 |
+| 第8.2 Graph | 目标9剩10h，图/schema兼容与全范围回归；条件性T056 | 原pending恢复、未知核对；有worker才竞争/lease/fencing |
 | 第8.4安全 | 目标14剩15h，由本人完整威胁模型和回归 | 所有实际关键攻击面，实际越权0 |
 
 如当前Server只开放两只读工具，补写工具后同步registry/schema/审批/用例，再固定候选池做下列模型实验。没有真实材料的fixture不能标resolved；不能为冻结降低断言。
@@ -70,7 +70,7 @@
 
 **进入条件**：V6：目标7/8补齐后工具池稳定，冻结同一任务集，再做四配置实验。
 
-**Agent目标**：用质量和成本确定小模型适用边界，避免先凭印象选框架。 对应详细任务：**M5 05–08**。
+**Agent目标**：用质量和成本确定小模型适用边界，避免先凭印象选框架。 对应详细任务：**T061–T064**。
 
 **技术点掌握程度标准**
 
@@ -92,7 +92,7 @@
 **具体实践与逐项操作**
 
 
-M5 05–08：四必做配置各3次；压缩单变量，27B选修。工具池与固定项在“先补跨阶段目标”完成后冻结。
+T061–T064：四必做配置各3次；压缩单变量，27B选修。工具池与固定项在“先补跨阶段目标”完成后冻结。
 
 学习固定变量、单变量消融、配对结果、样本量、方差、冷/热启动与 GPU 资源。关注本项目的证书/摘要/密钥任务，分别验证意图、参数、真实执行与结果解释。
 
@@ -100,19 +100,19 @@ M5 05–08：四必做配置各3次；压缩单变量，27B选修。工具池与
 
 | 技术点 | 本阶段必须能独立做到 | 练习与验收证据 | 可后置内容 |
 |---|---|---|---|
-| Baseline 与固定变量 | 记录模型身份/量化、prompt、工具池、fixtures、上下文和预算；同一评测只改目标变量 | M5 05 配置与数据 hash，能指出两个不可公平比较的配置差异 | 大规模模型榜单与训练实验 |
-| Router 与模型选择 | 区分路由/工具候选筛选的作用和模型自身能力；保持明确开关，路由不越过权限 | M5 06 四组 4B±router、9B±router，保留路由决策和错路由实例 | 训练 Router、MoE 内部机制 |
+| Baseline 与固定变量 | 记录模型身份/量化、prompt、工具池、fixtures、上下文和预算；同一评测只改目标变量 | T061 配置与数据 hash，能指出两个不可公平比较的配置差异 | 大规模模型榜单与训练实验 |
+| Router 与模型选择 | 区分路由/工具候选筛选的作用和模型自身能力；保持明确开关，路由不越过权限 | T062 四组 4B±router、9B±router，保留路由决策和错路由实例 | 训练 Router、MoE 内部机制 |
 | 消融与配对比较 | 每个 case 对齐比较；每组运行 3 次，报告逐次和汇总，不把一次成功当稳定提升 | 四组原始结果与按 case 的改善/退化表；说明随机性与样本局限 | 高级显著性检验、因果实验设计 |
-| 上下文压缩 | 独立比较压缩开关；保留必要资源、版本和动作事实，不能压掉失败状态 | M5 07 与 Router 分离的实验及丢事实实例 | 学习型压缩、长任务自动摘要体系 |
-| 延迟、tokens 与显存 | 区分端到端和模型耗时；能计算 p50/p95，说明样本量；记录冷/热加载与峰值显存 | M5 08 原始计时与汇总，说明换模成本及运行环境 | 内核级推理优化、模型量化训练 |
+| 上下文压缩 | 独立比较压缩开关；保留必要资源、版本和动作事实，不能压掉失败状态 | T063 与 Router 分离的实验及丢事实实例 | 学习型压缩、长任务自动摘要体系 |
+| 延迟、tokens 与显存 | 区分端到端和模型耗时；能计算 p50/p95，说明样本量；记录冷/热加载与峰值显存 | T064 原始计时与汇总，说明换模成本及运行环境 | 内核级推理优化、模型量化训练 |
 | 错误分类与改进决策 | 区分意图、计划、参数、执行、解释失败；根据样本选择 schema/路由/提示改进 | 至少一组失败样本分析，说明质量改善是否抵消耗时增加 | 仅靠总体均分自动选模型 |
 
 | 顺序 | 学习任务 | 固定条件 | 应报告什么 |
 |---|---|---|---|
-| M5 05 | 定义工具选择 baseline | 工具池、描述、fixtures、参数、Judge | intent、计划、参数、任务成功和失败类型 |
-| M5 06 | 比较 4B±router、9B±router | 同族同量化、think/context/预算一致 | 每组 3 次，逐次及汇总结果 |
-| M5 07 | 另测上下文压缩 | 与 router 单独开关 | 哪类误调用减少或增加 |
-| M5 08 | 记录成本 | 同环境与串行路线 | 端到端 p50/p95、tokens、峰值显存、换模/加载 |
+| T061 | 定义工具选择 baseline | 工具池、描述、fixtures、参数、Judge | intent、计划、参数、任务成功和失败类型 |
+| T062 | 比较 4B±router、9B±router | 同族同量化、think/context/预算一致 | 每组 3 次，逐次及汇总结果 |
+| T063 | 另测上下文压缩 | 与 router 单独开关 | 哪类误调用减少或增加 |
+| T064 | 记录成本 | 同环境与串行路线 | 端到端 p50/p95、tokens、峰值显存、换模/加载 |
 
 router 是先缩小候选工具范围的组件，不是强制所有请求用某工具。27B 是选修；本机不能保证全部驻留显存，不能把 offload 延迟与 4B/9B 混作公平硬件比较。80 工具压力池也属选修，几个业务工具的结果不能证明大规模工具池能力。
 
@@ -124,7 +124,7 @@ router 是先缩小候选工具范围的组件，不是强制所有请求用某�
 
 **进入条件**：从V1收集小用例与成功条件；V6用20h完成Runner、100–180综合题、冻结和回归。初期手动case不冒充正式题库。
 
-**Agent目标**：把单次Demo变成可重复实验，定位改动收益与回归。 对应详细任务：**M5 09–13**。
+**Agent目标**：把单次Demo变成可重复实验，定位改动收益与回归。 对应详细任务：**T065–T069**。
 
 **技术点掌握程度标准**
 
@@ -146,7 +146,7 @@ router 是先缩小候选工具范围的组件，不是强制所有请求用某�
 **具体实践与逐项操作**
 
 
-回收V1草稿、V2简单驱动、V4人工故障演练，按M5 09–13补真实fixture/gold、隔离Runner/cleanup、100–180题与配对compare。前面的小批验收不被自动视为frozen。
+回收V1草稿、V2简单驱动、V4人工故障演练，按T065–T069补真实fixture/gold、隔离Runner/cleanup、100–180题与配对compare。前面的小批验收不被自动视为frozen。
 
 学习 fixture、gold、success predicate、dev/test、group split、hash、scenario 与 cleanup。你需要一个能驱动多步动作的 Runner；草稿 schema 校验器不是应用 Runner。
 
@@ -154,22 +154,22 @@ router 是先缩小候选工具范围的组件，不是强制所有请求用某�
 
 | 技术点 | 本阶段必须能独立做到 | 练习与验收证据 | 可后置内容 |
 |---|---|---|---|
-| Fixture、gold 与成功断言 | 构造受控资源与固定时钟；审定预期计划、事实、授权和副作用，不只比答案字符串 | M5 09 每类样本有真实来源/状态预期；实际资源与期望状态逐项审定 | 自动生成大规模 gold |
+| Fixture、gold 与成功断言 | 构造受控资源与固定时钟；审定预期计划、事实、授权和副作用，不只比答案字符串 | T065 每类样本有真实来源/状态预期；实际资源与期望状态逐项审定 | 自动生成大规模 gold |
 | Dev/test、group split 与 hash | 相关文档/场景按组划分，避免同源泄漏；记录数据/配置 hash，测试集不用于反复调参 | 一份划分说明和实验 manifest；知道修改数据后哪些结果不可直接比较 | 复杂数据版本平台 |
-| 单条 Runner 与隔离清理 | 为 case 建独立 namespace；驱动请求、记录、断言与 cleanup，超时失败同样记结果 | M5 10 单例正常/失败/超时记录，清理后无遗留资源且不删别人的资源 | 分布式评测队列 |
-| Scenario 与故障控制 | 驱动 turn/approve/fault/restart/resume/cancel；控制动作与用户自然语言分开 | M5 11 审批和恢复场景包含实际状态断言；模型没有收到故障控制指令 | 通用混沌工程平台 |
-| 结果完整性与配对回归 | 每个 case 恰有一条结果，缺失/重复/额外均报错；逐样本对比，不只看平均值 | M5 13 固定 hash 的结果差异，安全退化能定位到 case 并阻塞 | 完全自动判定全部语义等价 |
+| 单条 Runner 与隔离清理 | 为 case 建独立 namespace；驱动请求、记录、断言与 cleanup，超时失败同样记结果 | T066 单例正常/失败/超时记录，清理后无遗留资源且不删别人的资源 | 分布式评测队列 |
+| Scenario 与故障控制 | 驱动 turn/approve/fault/restart/resume/cancel；控制动作与用户自然语言分开 | T067 审批和恢复场景包含实际状态断言；模型没有收到故障控制指令 | 通用混沌工程平台 |
+| 结果完整性与配对回归 | 每个 case 恰有一条结果，缺失/重复/额外均报错；逐样本对比，不只看平均值 | T069 固定 hash 的结果差异，安全退化能定位到 case 并阻塞 | 完全自动判定全部语义等价 |
 | CI 与质量门槛 | 将已审定可重复的检查接入 CI；区分配置失败、程序失败和模型质量变化，不通过放宽断言求绿 | 100–180 条审定综合用例清单与回归报告；失败任务保留日志 | 多平台矩阵与复杂发布流水线 |
 
 | 顺序 | 学习任务 | 产物 | 验收指标 |
 |---|---|---|---|
-| M5 09 | 为密码业务建数据记录 | 密码业务 fixtures、工具枚举、证据与用例 | schema/validator/registry 同步，真实来源与状态断言齐全 |
-| M5 10 | 单条 Runner | 建 namespace→请求→记录→断言→cleanup | 每个 case 唯一结果，失败/超时不遗漏 |
-| M5 11 | Scenario Runner | turn/approve/fault/restart/resume/cancel | 带外控制由 Runner 驱动，不发给模型当普通问题 |
-| M5 12 | 扩充并逐条审定 | 100–180 条综合用例 | 无 TODO，真实证据与明确成功条件 |
-| M5 13 | 比较与 CI | 固定 hash 的 case-level paired compare | 缺失/重复/额外结果拒绝，安全失败阻塞 |
+| T065 | 为密码业务建数据记录 | 密码业务 fixtures、工具枚举、证据与用例 | schema/validator/registry 同步，真实来源与状态断言齐全 |
+| T066 | 单条 Runner | 建 namespace→请求→记录→断言→cleanup | 每个 case 唯一结果，失败/超时不遗漏 |
+| T067 | Scenario Runner | turn/approve/fault/restart/resume/cancel | 带外控制由 Runner 驱动，不发给模型当普通问题 |
+| T068 | 扩充并逐条审定 | 100–180 条综合用例 | 无 TODO，真实证据与明确成功条件 |
+| T069 | 比较与 CI | 固定 hash 的 case-level paired compare | 缺失/重复/额外结果拒绝，安全失败阻塞 |
 
-评测使用本项目schema v3，工具枚举与结构文档一致。起步草稿都保留draft；应用registry落地时核对资源、参数、计划、事实与成功条件，逐条审定后才能冻结。
+评测使用本项目schema v3，工具枚举与[V1工具契约](V1-CORE-DEMO.md#contract-4)及实际registry一致。起步草稿都保留draft；应用registry落地时核对资源、参数、计划、事实与成功条件，逐条审定后才能冻结。
 
 综合用例建议先达到 100 条：Intent10/RAG15/Tool15/Database10/Workflow15/Memory10/Security15/Complex10。完整 180 条建议分布：20/30/25/20/20/15/25/25。RAG≥50、Tool≥50 是各能力专项题库；综合集可以从其中抽取已审定题，但要记录复用 ID，不能把同一题重复计成独立新样本。
 
@@ -181,14 +181,14 @@ router 是先缩小候选工具范围的组件，不是强制所有请求用某�
 
 ### 完成目标十五全栈专项
 
-回[V2目标15完整表](V2-WEB.md#目标15reacttypescript-与-agent-交互30h)，使用目标15剩15h补React异步/清理、历史资源/审批/Memory/来源/Verifier/错误/unknown体验。把M6 01–07所有范围逐一跑：正常、空、拒绝、冲突、断线、刷新、取消、撤权下载、Verifier失败。不重复计V2已完成15h，不因为页面存在就认为TS与异步状态已掌握。
+回[V2目标15完整表](V2-WEB.md#目标15reacttypescript-与-agent-交互30h)，使用目标15剩15h补React异步/清理、历史资源/审批/Memory/来源/Verifier/错误/unknown体验。把T070–T076所有范围逐一跑：正常、空、拒绝、冲突、断线、刷新、取消、撤权下载、Verifier失败。不重复计V2已完成15h，不因为页面存在就认为TS与异步状态已掌握。
 
 
 ### 目标16：配置、部署、监控与恢复（15h）
 
 **进入条件**：V6完整功能联调后15h部署/恢复；V2已有Ubuntu开发运行和Web构建，不能把首次看网页拖到这里。
 
-**Agent目标**：让他人从清洁目录复现，服务故障能定位、恢复与核对。交付细节见V6交付章节。 对应详细任务：**M6 08–12**。
+**Agent目标**：让他人从清洁目录复现，服务故障能定位、恢复与核对。交付细节见V6交付章节。 对应详细任务：**T077–T081**。
 
 **技术点掌握程度标准**
 
@@ -205,12 +205,12 @@ router 是先缩小候选工具范围的组件，不是强制所有请求用某�
 
 **独立练习**：模拟依赖未ready并诊断；在隔离目录恢复一份备份，核对元数据与产物。
 
-**退出条件**：清洁目录安装/迁移/启动/smoke通过；重启与备份恢复有证据，CPU降级不标GPU基线，完成综合验收后标记m6-done。
+**退出条件**：清洁目录安装/迁移/启动/smoke通过；重启与备份恢复有证据，CPU降级不标GPU基线，完成综合验收后记录 `v6-done`。
 
 **具体实践与逐项操作**
 
 
-M6 08–12在隔离教学实例执行清洁clone复现、版本/网络/迁移/volume与备份恢复；首次前端运行已经V2完成。
+T077–T081在隔离教学实例执行清洁clone复现、版本/网络/迁移/volume与备份恢复；首次前端运行已经V2完成。
 
 学习镜像、Compose profiles、版本/digest、配置、迁移、volume、健康检查、网络、日志轮转与备份恢复。先把现有服务按层装配，Redis、对象存储不需要时不用增加。
 
@@ -218,21 +218,21 @@ M6 08–12在隔离教学实例执行清洁clone复现、版本/网络/迁移/vo
 
 | 技术点 | 本阶段必须能独立做到 | 练习与验收证据 | 可后置内容 |
 |---|---|---|---|
-| 镜像与 Compose | 分清 image/container/service/volume；按依赖启动必要服务，固定验证过的版本与配置 | M6 08–09 在新目录按文档装配，记录实际镜像与依赖版本 | Kubernetes、服务网格 |
+| 镜像与 Compose | 分清 image/container/service/volume；按依赖启动必要服务，固定验证过的版本与配置 | T077–T078 在新目录按文档装配，记录实际镜像与依赖版本 | Kubernetes、服务网格 |
 | Ubuntu 启停与进程托管 | 会查服务状态与日志；明确 host/容器中谁托管进程，停止和重启不留下多实例 | 保存实际路线的启动/停止/重启记录；需要 host 服务时再学对应 systemd 配置 | 通用 Linux 运维平台 |
 | 配置、秘密与迁移职责 | 样例可复现，实际秘密受限挂载/配置；迁移账号与应用账号分开，不把秘密打入镜像 | 配置清单、权限与迁移日志，应用账号无 bootstrap/DDL 权限 | 自动秘密轮换与配置中心 |
-| 网络、浏览器入口与 readiness | 理解 host 回环、容器内地址和端口映射；只开放必要入口；区分存活与依赖就绪 | M6 10 浏览器可访问，DB/模型端点受限；依赖不可用时 readiness 不报成功 | 公网发布时再补域名/TLS/反向代理；复杂网络选修 |
-| Volume、资源与密钥持久化 | 识别 DB、artifact、加密 key blobs 的存储位置；重启后版本与资源引用仍有效 | M6 11 重启前后相同 Run/资源/版本可查询，实际文件存在 | 集群共享存储与高可用 |
+| 网络、浏览器入口与 readiness | 理解 host 回环、容器内地址和端口映射；只开放必要入口；区分存活与依赖就绪 | T079 浏览器可访问，DB/模型端点受限；依赖不可用时 readiness 不报成功 | 公网发布时再补域名/TLS/反向代理；复杂网络选修 |
+| Volume、资源与密钥持久化 | 识别 DB、artifact、加密 key blobs 的存储位置；重启后版本与资源引用仍有效 | T080 重启前后相同 Run/资源/版本可查询，实际文件存在 | 集群共享存储与高可用 |
 | 日志轮转与基本可观测性 | 通过 run_id 定位跨模块失败，记录耗时与状态；限制日志空间，日志无秘密 | 一次端到端失败的排查记录与轮转/保留配置 | Prometheus、完整分布式追踪平台 |
-| 备份与恢复 | 写清 DB、blobs、主秘密的恢复依赖；在隔离教学环境做恢复并核对资源，不只验证备份命令退出成功 | M6 12 恢复演练结果与缺少主秘密时的明确限制 | 多区域灾备、企业 RPO/RTO 承诺 |
+| 备份与恢复 | 写清 DB、blobs、主秘密的恢复依赖；在隔离教学环境做恢复并核对资源，不只验证备份命令退出成功 | T081 恢复演练结果与缺少主秘密时的明确限制 | 多区域灾备、企业 RPO/RTO 承诺 |
 
 | 顺序 | 学习任务 | 操作顺序 | 验收指标 |
 |---|---|---|---|
-| M6 08 | 固定环境与依赖 | 新目录 clone→配置→sync→模型/密码库验证 | 无隐含手工步骤，实际版本可查 |
-| M6 09 | 部署服务与迁移 | DB→迁移→必要服务→API/worker→前端 | readiness 正确，应用无 bootstrap/迁移密钥 |
-| M6 10 | 验证网络 | 前端/API 对外，其余内部或回环 | 浏览器可访问，DB/Ollama/GmSSL 服务不裸露 |
-| M6 11 | 重启与持久化 | 保存测试资源→重启→查询 | 任务/资源/密钥版本记录保留 |
-| M6 12 | 备份与恢复说明 | 元数据、加密 keystore、主密钥依赖分别说明 | 只恢复 DB 不冒充已恢复密钥能力 |
+| T077 | 固定环境与依赖 | 新目录 clone→配置→sync→模型/密码库验证 | 无隐含手工步骤，实际版本可查 |
+| T078 | 部署服务与迁移 | DB→迁移→必要服务→API/worker→前端 | readiness 正确，应用无 bootstrap/迁移密钥 |
+| T079 | 验证网络 | 前端/API 对外，其余内部或回环 | 浏览器可访问，DB/Ollama/GmSSL 服务不裸露 |
+| T080 | 重启与持久化 | 保存测试资源→重启→查询 | 任务/资源/密钥版本记录保留 |
+| T081 | 备份与恢复说明 | 元数据、加密 keystore、主密钥依赖分别说明 | 只恢复 DB 不冒充已恢复密钥能力 |
 
 Ollama 默认在 Ubuntu `127.0.0.1:11434`，容器访问方式按 [README环境](../README.md#env-0) 核对；不能假设 host-gateway 能访问只监听回环的进程。密码适配服务与API不持有Docker socket，容器只挂载各自必要的受控资源。
 
@@ -263,7 +263,7 @@ ss -ltnp
 
 另演示一条公开证书解析/验证或测试 CSR/签发流程。若某项延后，写明缺口，不能用 Chat 页面“看起来能聊天”代替密码业务验收。
 
-**最终指标**：完整场景的全部成功谓词成立；关键确定性密码结果与独立核对一致；恢复不静默重复动作；安全实际越权为 0；未检查项明确标记；干净 Ubuntu 环境能按文档重现；Windows 浏览器能看到全链路。标签 `m6-done` 只在这些结果完成后建立。
+**最终指标**：完整场景的全部成功谓词成立；关键确定性密码结果与独立核对一致；恢复不静默重复动作；安全实际越权为 0；未检查项明确标记；干净 Ubuntu 环境能按文档重现；Windows 浏览器能看到全链路。标签 `v6-done` 只在这些结果完成后建立。
 
 **V6出口**：所有16目标表必修项与P0通过，A–J毕业矩阵正常/失败/本人证据完整，正式实验/安全与清洁部署/恢复通过。选修不适用有理由，所有技术标签按学习总览的专项标签条件创建，不以累计小时或一次Demo代替。
 
@@ -452,7 +452,7 @@ CI 普通任务跑校验、mock 场景和确定性安全测试；本地 GPU 任�
 | 固定项 | 记录内容 | 验证用途 |
 |---|---|---|
 | doc/code | remote、branch、commit、dirty状态 | 确认使用同版规格与实现 |
-| OpenSSL/GmSSL/绑定 | tag/commit、构建参数、prefix、动态库路径、能力列表 | 确认真实Provider支持，系统CLI与Python backend分开 |
+| OpenSSL/GmSSL CLI | tag/commit、构建参数、prefix、可执行路径、版本与能力列表 | 确认真实Provider支持；可选绑定采用时另记包与后端版本 |
 | Python/前端 | 解释器、uv.lock、pnpm锁、Node/pnpm版本 | 新目录依赖复现 |
 | 模型/检索 | Ollama版本、model digest、量化/template/think、embed/rerank、index hash | 防止环境变化冒充模型收益 |
 | DB/Graph/policy | Alembic revision、graph/schema版本、policy版本 | 恢复兼容检查 |
@@ -464,18 +464,18 @@ CI 普通任务跑校验、mock 场景和确定性安全测试；本地 GPU 任�
 <a id="delivery-2-2-最小交付包"></a>
 ### 最小交付包
 
-| 位置（应用仓库建议） | 应有内容 | 完成标准 |
+| 位置（未注明时为代码仓库） | 应有内容 | 完成标准 |
 |---|---|---|
-| README / docs/runbook.md | 当前有效安装、迁移、启动、停止、smoke、恢复命令 | 新终端/干净clone实际执行过 |
-| .env.example / config | 所有已使用字段、默认值、必需/可选、秘密来源 | 与Settings/启动校验一致；无真实秘密 |
-| pyproject / uv.lock / frontend锁 | 分阶段extras、固定依赖 | 不因加crypto extra覆盖已有extras |
-| migrations | schema与角色迁移、checkpointer初始化方式 | 空库与已有库升级测试 |
-| compose/镜像配置 | profiles、健康、网络、volumes、资源与日志限制 | 启动顺序与ready分别验证 |
-| tests / eval runner | 合同/mock/集成/安全/专用GPU入口 | 分类执行；没有GPU不伪报实测 |
-| docs/decisions | 本人阶段ADR | 记录证据、限制、重审条件 |
+| 代码仓库README.md | 当前有效安装、迁移、启动、停止、smoke、恢复命令 | 新终端/干净clone实际执行过 |
+| .env.example / packages/core/config.py | 所有已使用字段、默认值、必需/可选、秘密来源 | 与Settings/启动校验一致；无真实秘密 |
+| pyproject.toml / uv.lock / web中的前端锁 | 分阶段extras、固定依赖 | 新增依赖不覆盖已有extras；前端锁随前端工程引入 |
+| packages/db/migrations/ | schema与角色迁移、checkpointer初始化方式 | 空库与已有库升级测试 |
+| infra/中的Compose与镜像配置 | profiles、健康、网络、volumes、资源与日志限制 | 按需实现后验证启动顺序与ready |
+| tests/、tools/tests/、verifier/tests/、eval/runner.py | 合同/mock/集成/安全/专用GPU入口 | 分类执行；没有GPU不伪报实测 |
+| 本学习仓库各阶段文末的本人学习记录 | 本人阶段ADR | 记录证据、限制、重审条件 |
 | reports/或外部结果目录 | 版本清单、逐case结果、Trace与恢复演练 | 引用路径可定位，敏感结果不公开提交 |
 
-报告目录是建议，实际代码若用别名要在runbook说明。大blob、解密产物与真实.env不进入Git；评测fixture只使用审定教学资源。交付过程记录每一步状态“已验证/未验证/不适用及理由”。
+报告目录是建议，实际代码若用别名要在代码README说明。大blob、解密产物与真实.env不进入Git；评测fixture只使用审定教学资源。交付过程记录每一步状态“已验证/未验证/不适用及理由”。
 
 <a id="delivery-3"></a>
 <a id="delivery-3-3-服务与网络"></a>
@@ -491,7 +491,7 @@ CI 普通任务跑校验、mock 场景和确定性安全测试；本地 GPU 任�
 | Provider/keystore | 固定密码API与受控材料 | keystore不是通用读取root，运行账号最小权限 |
 | worker/Redis/对象存储 | 按需扩展 | 未引入不算缺核心；引入后验收领取、持久化与网络权限 |
 
-默认方案可让API使用host网络访问Ubuntu回环Ollama，DB/向量库发布到回环；alternative bridge不能把容器127.0.0.1当宿主。两套网络选一套实际验证并在runbook写清。容器不是自动安全边界，API不持有Docker socket、bootstrap或migration秘密。
+默认方案可让API使用host网络访问Ubuntu回环Ollama，DB/向量库发布到回环；alternative bridge不能把容器127.0.0.1当宿主。两套网络选一套实际验证并在代码README写清。容器不是自动安全边界，API不持有Docker socket、bootstrap或migration秘密。
 
 启动不等于ready；Compose的依赖条件/健康检查要与真实业务依赖对应，应用还需超时和明确失败。只有启用的能力列为ready依赖；GmSSL未启用可标disabled，已承诺工具却缺库必须标unavailable并拒绝调用。[Docker Compose官方启动顺序](https://docs.docker.com/compose/how-tos/startup-order/)
 
@@ -514,7 +514,7 @@ CI 普通任务跑校验、mock 场景和确定性安全测试；本地 GPU 任�
 | 9 重启 | 受控停启，检查pending/产物/历史 | 数据保留与恢复记录 | volume、checkpoint、动作账本 |
 | 10 备份恢复 | 在独立实例恢复一份一致备份 | hash/权限/版本/旧动作核对 | 缺keystore、index版本、unknown |
 
-首版先写实际命令，再由另一个终端按文档跑，修正遗漏；不直接假设代码目标目录src/lpa已经存在，当前packages骨架按结构文档映射。学习者须独立说明一个启动故障与一条修复依据。
+首版先写实际命令，再由另一个终端按文档跑，修正遗漏；按[代码README](../../Agent-development-code/README.md)中的`packages/`、`tools/`、`mcp_integration/`等实际路径操作，目录检查使用`scripts/layout.json`与`selftest.py`；尚未实现的服务不列为可用命令。学习者须独立说明一个启动故障与一条修复依据。
 
 <a id="delivery-5"></a>
 <a id="delivery-5-5-数据与密钥备份恢复"></a>
@@ -654,7 +654,7 @@ Planner输出供运行时检查的步骤提议，而非shell脚本。计划变�
 - 明确四类上下文、每种版本、所有秘密边界和停止条件。
 - 用真实证据解释一次拒绝、一次失败、一次重启恢复及一次Verifier误判。
 - 独立完成Loop修改、State设计和关键边界说明；AI只能审查本人核心实现。
-- 设计与结构文档/实际代码差异有迁移记录，未实现能力不标完成。
+- 阶段设计与实际代码差异在对应阶段学习记录中说明，目录调整同步代码README与scripts/layout.json，未实现能力不标完成。
 
 <a id="crypto-6.2"></a>
 <a id="crypto-6.2-62-签名与验签"></a>
@@ -668,10 +668,10 @@ Planner输出供运行时检查的步骤提议，而非shell脚本。计划变�
 
 | 技术点与阶段 | 本阶段必须能独立做到 | 练习与验收证据 | 可后置内容 |
 |---|---|---|---|
-| 签名 profile（M1） | 固定一种 OpenSSL 系和一种 SM2 路线；说明摘要、编码及 SM2 用户 ID 的作用 | profile 配置与独立验签结果，修改 profile 后行为明确 | 全部签名算法与编码体系 |
-| 正反验签（M1） | 对合法签名、改文件、改签名、错公钥分别给出 valid/invalid/操作错误 | 独立对照与反例，坏编码不伪装成工具成功 | 数学证明与签名安全研究 |
-| 身份信任（M1→M2） | 分开 signature_valid 和 identity_trusted；指出公钥来源及已做/未做信任检查 | 数学验签通过但身份未核验的输出与最终解释 | 完整证书身份体系与长期验证 |
-| 签名副作用（M4） | 私钥只在受控服务加载，审批绑定文件/key 版本/profile，重复动作不重复签 | 审批和动作账本、signature artifact 与权限证据 | 生产文档签署、时间戳服务 |
+| 签名 profile（V6） | 固定一种 OpenSSL 系和一种 SM2 路线；说明摘要、编码及 SM2 用户 ID 的作用 | profile 配置与独立验签结果，修改 profile 后行为明确 | 全部签名算法与编码体系 |
+| 正反验签（V1→V6） | 对合法签名、改文件、改签名、错公钥分别给出 valid/invalid/操作错误 | 独立对照与反例，坏编码不伪装成工具成功 | 数学证明与签名安全研究 |
+| 身份信任（V1→V6） | 分开 signature_valid 和 identity_trusted；指出公钥来源及已做/未做信任检查 | 数学验签通过但身份未核验的输出与最终解释 | 完整证书身份体系与长期验证 |
+| 签名副作用（V4→V6） | 私钥只在受控服务加载，审批绑定文件/key 版本/profile，重复动作不重复签 | 审批和动作账本、signature artifact 与权限证据 | 生产文档签署、时间戳服务 |
 
 <a id="crypto-8"></a>
 <a id="crypto-8-8-领域验收任务"></a>
@@ -694,9 +694,9 @@ Planner输出供运行时检查的步骤提议，而非shell脚本。计划变�
 
 领域的确定性密码、权限和状态检查要求全部通过。模型质量报告使用 Task Success、Tool/Argument/Joint Accuracy、误报与无支持结论；延迟门槛由本机 baseline 定，不预设 500ms 或任意 95% 保证。
 
-<a id="full-m2"></a>
-<a id="full-m2-m260h"></a>
-#### M2（60h）
+<a id="full-goals-3-4"></a>
+<a id="full-goals-3-4-60h"></a>
+#### 目标3–4完整验收（60h）
 
 - [ ] 目标3：鉴权、资源归属、POST/chat/files、sessions/runs/events/cancel、live/ready。
 - [ ] 流前持久化Run；同client_request_id返回原Run。
@@ -705,11 +705,11 @@ Planner输出供运行时检查的步骤提议，而非shell脚本。计划变�
 - [ ] 目标4：Alembic迁移、owner/app/query/audit角色隔离，运行角色不能DDL/改审计。
 - [ ] 六个查询可跑；q4从llm_calls实际计量，q6窗口参数化，失败包含timeout。
 - [ ] 文件/证书/key元数据按项目与用户隔离；DB/Trace不存私钥或解密文件内容。
-- [ ] 短DB事务不跨外部任务；run/user/session一致性检查，重启数据不丢，m2-done。
+- [ ] 短DB事务不跨外部任务；run/user/session一致性检查，重启数据不丢，目标3–4全表通过。
 
-<a id="full-m4"></a>
-<a id="full-m4-m480h"></a>
-#### M4（80h）
+<a id="full-goals-7-9"></a>
+<a id="full-goals-7-9-80h"></a>
+#### 目标7–9完整验收（80h）
 
 - [ ] 目标7：ToolSpec与本地policy、密码操作风险、输出schema、幂等retry与预算。
 - [ ] ≥50工具用例允许多解，gold_calls按occurrence表达多次调用，单位SI明确。
@@ -721,11 +721,11 @@ Planner输出供运行时检查的步骤提议，而非shell脚本。计划变�
 - [ ] 动态interrupt用Command(resume)，同pending action恢复不重新改参数。
 - [ ] approvals绑定hash/身份/有效期/单次消费；重复/并发approve与拒绝可测。
 - [ ] actions账本、幂等键、执行前/中/后崩溃核对；unknown不自动重跑；引入独立worker时补lease/fencing与双worker竞争。
-- [ ] 重连恢复待审批，显式cancel，副作用只执行一次或进入明确unknown，m4-done。
+- [ ] 重连恢复待审批，显式cancel，副作用只执行一次或进入明确unknown，目标7–9全表通过。
 
-<a id="full-m5"></a>
-<a id="full-m5-m590h"></a>
-#### M5（90h）
+<a id="full-goals-10-14"></a>
+<a id="full-goals-10-14-90h"></a>
+#### 目标10–14完整验收（90h）
 
 - [ ] 目标10（20h）：同用户跨session Memory，不同user/project隔离；短显式偏好不误过滤。
 - [ ] 改口事务、有效hash唯一索引、语义复核、来源/查看/纠正/删除与投毒防护。
@@ -738,11 +738,11 @@ Planner输出供运行时检查的步骤提议，而非shell脚本。计划变�
 - [ ] 结果含intent/proposed/executed/denied/retrieval/evidence/claims/states/timing/errors。
 - [ ] 普通CI合同/mock与专用GPU评测分开；配对compare按pp并列case回归。
 - [ ] 目标14（20h）：注入/SQL/命令/路径/SSRF/泄密/提权、审批重放、跨用户、MCP/Memory投毒。
-- [ ] 安全判断区分拒绝尝试与真实执行；实际副作用Unauthorized Action Rate=0，m5-done。
+- [ ] 安全判断区分拒绝尝试与真实执行；实际副作用Unauthorized Action Rate=0，目标10–14全表通过。
 
-<a id="full-m6"></a>
-<a id="full-m6-m660h"></a>
-#### M6（60h）
+<a id="full-goals-15-16"></a>
+<a id="full-goals-15-16-60h"></a>
+#### 目标15–16与综合交付验收（60h）
 
 - [ ] 目标15（30h）：九UI区块、实时状态、刷新/reconnect/审批/cancel正确。
 - [ ] draft token显示未验证；final替换，错误不展示为已验证；安全Markdown渲染。
@@ -750,7 +750,7 @@ Planner输出供运行时检查的步骤提议，而非shell脚本。计划变�
 - [ ] API无Docker socket与bootstrap/migration秘密；**Ollama仅监听127.0.0.1**，仅前端/API端口对外。
 - [ ] 干净目录安装→迁移→启动→smoke，重启数据不丢。
 - [ ] 综合项目（15h）：上传/只读检查/key元数据/加解密审批/执行/轮换与版本验证/UI审计全链路，补证书验证或测试CSR/签发。
-- [ ] 故障恢复不静默重复密码动作，版本化来源/审计完整，冻结scenario回归，m6-done。
+- [ ] 故障恢复不静默重复密码动作，版本化来源/审计完整，冻结scenario回归，目标15–16与综合交付通过。
 - [ ] **交付验收**：Windows 浏览器从网络打开前端地址即可复现全链路，Windows 侧零安装。
 
 <a id="dataset-1"></a>
@@ -771,7 +771,7 @@ Planner输出供运行时检查的步骤提议，而非shell脚本。计划变�
 
 公共字段包含id、schema_version、status、split、group_id、category、difficulty、question、answerability、expected_behavior、fixture_refs、allowed_tool_plans、gold_calls、success_criteria、provenance。RAG增加gold_chunk_ids/gold_doc_ids/gold_pages/gold_section/gold_fact_slots；场景增加scenario。未知字段拒绝，字段或工具范围变更通过版本管理同步schema、validator与应用registry。
 
-本项目canonical工具为证书解析/验证、文件摘要、签名验签、密钥元数据、加解密、签名、轮换、CSR、测试签发、知识检索和固定元数据查询；工具ID与结构文档一致。intent_crypto表示密码操作意图，不替代权限或审批。
+本项目canonical工具为证书解析/验证、文件摘要、签名验签、密钥元数据、加解密、签名、轮换、CSR、测试签发、知识检索和固定元数据查询；工具ID与[V1工具契约](V1-CORE-DEMO.md#contract-4)及实际registry一致。intent_crypto表示密码操作意图，不替代权限或审批。
 
 status=ready仅说明内容经审定，不能代表应用测试成功。ready/frozen要求provenance中reviewer_kind=human、实际verified_by和ISO reviewed_at。AI生成的草稿保留synthesized与空审核字段；测试模块中的mock审核仅用于验证门禁。
 
@@ -848,12 +848,12 @@ scenario包含user_key、steps和cleanup=delete_namespace。步骤支持turn、a
 
 V1记录少量证书/摘要/Loop的明确输入输出与失败；V2增加API/幂等/权限；V3直调/MCP对照；V4逐动作审批与故障恢复；V5完成RAG≥50/四组检索及Verifier正误双集、Memory；V6固定完整工具池后完成Tool≥50、100–180综合、隔离Runner/cleanup/配对报告。
 
-M5 09/12是稳定任务ID，草稿从V1开始，正式范围到V6完成；manual小case不冒充Runner或frozen。原schema_version=3、canonical 13工具、人工审定/真实fixture/证据/审批门禁均保持。各V目标和预算见[Roadmap](../ROADMAP.md)，task切片见[阶段路线](../ROADMAP.md)。
+T065/T068是稳定任务ID，草稿从V1开始，正式范围到V6完成；manual小case不冒充Runner或frozen。原schema_version=3、canonical 13工具、人工审定/真实fixture/证据/审批门禁均保持。各V目标和预算见[Roadmap](../ROADMAP.md)，task切片见[阶段路线](../ROADMAP.md)。
 
 ## 本阶段签收清单
 
 - [ ] 本阶段学习技术表逐项有本人解释、独立实现/修改和失败验证证据。
-- [ ] Q01–Q22已由本人结合实现作答，证据与未覆盖边界记入docs/progress.md；AI仅审查。
+- [ ] Q01–Q22已由本人结合实现作答，证据与未覆盖边界记入本阶段文末的本人学习记录；AI仅审查。
 
 - [ ] 按学习总览的工时分配补API/DB/全部工具/三职责MCP/Graph/完整安全及前端专项。
 - [ ] 固定工具池后四模型配置各3次，≥50Tool及100–180综合frozen，完整Runner/隔离/cleanup/compare通过。

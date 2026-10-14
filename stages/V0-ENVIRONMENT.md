@@ -17,7 +17,7 @@
 
 ## 必须独立回答的关键问题
 
-这些问题必须由你结合自己的实现作答，AI只审查。记录在代码仓库docs/progress.md，写清场景、自己的理由、真实证据与未覆盖边界；只背定义或复制AI答案不算通过。
+这些问题必须由你结合自己的实现作答，AI只审查。记录在本阶段文末的本人学习记录中，写清场景、自己的理由、真实证据与未覆盖边界；只背定义或复制AI答案不算通过。
 
 | 编号 | 必须自己回答的问题 | 回答达到标准所需的说明或证据 |
 |---|---|---|
@@ -35,18 +35,18 @@
 | Q12 | 为什么日志和环境说明也可能泄露秘密？ | 列出自己记录中需要删去或脱敏的字段 |
 | Q13 | OpenSSL CLI与Python密码包可能使用不同后端吗？ | 分别记录真实版本与能力检查，解释不可互相替代的证据 |
 | Q14 | 为什么第一个Demo不需要先启动数据库、向量库和三个MCP Server？ | 按阶段说明每项依赖首次解决的问题 |
-| Q15 | Windows代码入口检查与Ubuntu密码业务测试分别证明什么？ | 列出已验证/未验证，不能将静态检查当真实运算 |
+| Q15 | 目录与入口检查和真实密码业务测试分别证明什么？ | 列出已验证/未验证，不能将静态检查当真实运算 |
 | Q16 | 换一个终端后如何重新证明V0完成？ | 提供一套实际复测记录、失败对照与未验证清单 |
 
 ## 分步任务与技术掌握标准
 
 先按当前切片实现最小输入输出，再补齐技术表。本阶段首次运行、正常/失败/权限、本人解释与独立修改分别验收；未实际运行不签收。
 
-### Phase 0：Ubuntu 与最小工程地基（20h）
+### V0：Ubuntu 与最小工程地基（20h）
 
 **进入条件**：V0开始；能使用Ubuntu终端，零基础按本阶段步骤操作，依赖细节查README环境说明。
 
-**Agent目标**：建立可复现环境，分清环境故障、协议故障与模型问题。 对应详细任务：**P0 01–05**。
+**Agent目标**：建立可复现环境，分清环境故障、协议故障与模型问题。 对应详细任务：**V0-01–V0-05**。
 
 **技术点掌握程度标准**
 
@@ -64,7 +64,7 @@
 
 **独立练习**：换一个终端复测；使用错误端口和错误模型名分别观察报错，修正后保留对照。
 
-**退出条件**：最小请求与测试真实通过；路径和版本可复现，Provider未验证能力明确记录；标记phase0-done，不要求容器GPU直通。
+**退出条件**：最小请求与测试真实通过；路径和版本可复现，Provider未验证能力明确记录；完成V0验收，不要求容器GPU直通。
 
 **目标**：从新终端能启动正确的 Python 环境、请求本机 Ollama、运行至少一个你理解的测试。预算 20h，暂不启动数据库、向量库和前端。
 
@@ -78,14 +78,14 @@
 | 进程、端口与日志 | 区分“进程存在”“端口监听”“请求可用”；能用进程/监听信息与日志定位服务未启动或地址错误 | 保存一次服务正常请求与一次错误地址的排查记录 | systemd 单元编写后置到部署；网络协议栈细节选修 |
 | Git | 看懂 status/diff/log；知道本地改动、提交、远端的区别；能提交本人改动、使用阶段 tag，更新前先检查工作区 | 为环境记录做一次可解释的 diff 和提交，说明 pull --ff-only 的失败含义 | rebase、复杂冲突与 Git 内部对象 |
 | Python、venv 与 uv/lock | 分清系统解释器和项目解释器；按阶段同步依赖；解释 pyproject 与 lock 的职责 | 新终端下记录解释器、包版本和 lock，定位一次错误解释器造成的导入失败 | 包发布、复杂多平台依赖解析 |
-| HTTP 与 JSON | 解释方法、URL、header、body、状态码和超时；用 curl 发请求并定位 JSON 字段 | 保存 P0 03 原始请求/响应，指出 messages、content、结束标志；连接失败与 HTTP 错误分别记录 | HTTP/2、代理调优、复杂网络抓包 |
-| pytest 入门 | 自己写一个确定性断言和一个预期异常；能运行指定测试、读失败位置，识别未收集测试 | P0 04 测试先因预期错误失败，再修复通过；保存测试文件与结果 | fixtures、参数化在 M1 学；插件开发选修 |
+| HTTP 与 JSON | 解释方法、URL、header、body、状态码和超时；用 curl 发请求并定位 JSON 字段 | 保存 V0-03 原始请求/响应，指出 messages、content、结束标志；连接失败与 HTTP 错误分别记录 | HTTP/2、代理调优、复杂网络抓包 |
+| pytest 入门 | 自己写一个确定性断言和一个预期异常；能运行指定测试、读失败位置，识别未收集测试 | V0-04 测试先因预期错误失败，再修复通过；保存测试文件与结果 | fixtures、参数化在 V1 学；插件开发选修 |
 | Settings、环境变量与秘密 | 说明模板和本地配置差别；查出当前有效配置来源；识别不能提交的秘密字段 | 配置检查结果与提交 diff，无实际口令或密钥；演示一个缺少配置的明确错误 | 密钥托管与配置中心 |
-| Provider 路线与版本 | 区分源码仓库、CLI、C 共享库和 Python 绑定；知道系统 OpenSSL 与 Python 后端可能不同 | P0 05 路线记录，列出已验证版本与尚未验证能力，不将“可导入”记为功能通过 | 此阶段不要求读密码库源码、实现算法或完成 CA |
+| Provider 路线与版本 | 区分源码仓库、CLI、C 共享库和 Python 绑定；知道系统 OpenSSL 与 Python 后端可能不同 | V0-05 路线记录，列出已验证版本与尚未验证能力，不将“可导入”记为功能通过 | 此阶段不要求读密码库源码、实现算法或完成 CA |
 
 停止学习这些概念的条件是能完成本阶段任务。Shell 脚本高级技巧、Docker 全套知识和深度模型原理可在后续按需学习。
 
-### P0 01 检查已有环境
+### V0-01 检查已有环境
 
 工作目录：实现仓库。逐条运行，遇到不存在的命令时记录缺口，不把命令输出错误忽略掉。
 
@@ -103,7 +103,7 @@ ollama list
 
 `gmssl` 暂时没有不阻塞最小环境验收；先完成 OpenSSL 只读业务。Ollama 连接失败先检查 service、11434 端口与日志，不改成 Windows 宿主 IP。
 
-### P0 02 安装本阶段依赖并固定环境
+### V0-02 安装本阶段依赖并固定环境
 
 已有 `.venv` 且版本正确时保留；缺失时才运行 `uv venv --python 3.12 .venv`。第一次生成锁文件与安装：
 
@@ -117,28 +117,28 @@ python3 scripts/selftest.py
 git status --short
 ```
 
-生成并检查 `uv.lock`，后续复现使用 `uv sync --frozen --extra m1 --extra dev`。项目的 `dev` 当前是 optional extra，不能假设省略 `--extra dev` 就会安装它。阶段依赖逐步叠加，M2 起保留 m1，不能只同步 m2 后把前面的依赖移除。参见 [uv 依赖管理](https://docs.astral.sh/uv/concepts/projects/dependencies/)。
+生成并检查 `uv.lock`，后续复现使用 `uv sync --frozen --extra m1 --extra dev`。项目的 `dev` 当前是 optional extra，不能假设省略 `--extra dev` 就会安装它。V2起仍需保留V1使用的依赖；代码仓库的 `m1`/`m2` 是现有 extra 名称，不能只同步 `m2` 后把 `m1` 移除。参见 [uv 依赖管理](https://docs.astral.sh/uv/concepts/projects/dependencies/)。
 
-当前骨架没有业务测试；`selftest.py` 只验证结构与配置一致性。pytest 显示“没有收集到测试”不算通过。你要在 P0 04 写一个真正执行了断言的测试。
+代码仓库已有入口、目录合同、最小Agent与SM2测试；`selftest.py`验证结构与配置一致性，不代替业务测试。核对实际收集、通过与跳过的测试，依赖缺失导致的跳过不算相应密码功能通过。V0-04仍要求本人能编写并执行确定性断言。
 
-### P0 03 做最小模型请求
+### V0-03 做最小模型请求
 
 先确认 `ollama list` 有 `qwen3.5:4b`。没有时才 `ollama pull qwen3.5:4b`。以下只发送无秘密的练习内容，输出放在本地数据目录：
 
 ```bash
 cd /home/zsw/work/agent_development/Agent-development-code
-mkdir -p data/learning/phase0
+mkdir -p data/learning/v0
 curl --fail --show-error --max-time 180 \
   http://127.0.0.1:11434/api/chat \
   -H 'Content-Type: application/json' \
   -d '{"model":"qwen3.5:4b","messages":[{"role":"user","content":"用一句话说明文件摘要和文件加密的区别。"}],"stream":false,"think":false,"options":{"temperature":0,"num_ctx":8192}}' \
-  -o data/learning/phase0/chat-response.json
-python -m json.tool data/learning/phase0/chat-response.json
+  -o data/learning/v0/chat-response.json
+python -m json.tool data/learning/v0/chat-response.json
 ```
 
 查看 `message.content`、`done`、模型名和实际返回的 token/耗时字段。不把回答当技术结论的权威来源，这里验收的是请求确实完成、JSON 能解析。记录实验参数；`think` 支持情况以实际模型信息和后端版本为准，参见 [Ollama Chat API](https://docs.ollama.com/api/chat)。
 
-### P0 04 写首个测试与环境记录
+### V0-04 写首个测试与环境记录
 
 先独立写一个不依赖模型的测试：加载测试 Settings，断言本机 Ollama 地址和模型配置正确；不要让测试依赖含真实口令的 `.env`。再写一个简单输入校验例子，非法输入得到你预期的错误。
 
@@ -153,11 +153,11 @@ python -m ruff check .
 
 把真实版本、模型 ID/digest、CPU/GPU 路线、Python 路径、lock hash 和推理配置写入 `environment.lock.json`。摘要或随机 ID 不能替代模型完整 digest；CLI 只显示短 ID 时继续查询实际模型元数据，记录来源。环境记录不写口令或完整秘密配置。
 
-### P0 05 确定 OpenSSL 和 GmSSL 路线
+### V0-05 确定 OpenSSL 和 GmSSL 路线
 
-OpenSSL：只读证书操作可先用 CLI；Python 密码操作可用 `cryptography` 作为 OpenSSL-backed 适配入口。Python 包的 OpenSSL 后端和系统 `openssl` 命令不保证同版本，分别记录并验证。
+OpenSSL：当前采用已编译的CLI，后续由`packages/crypto/providers/openssl_cli.py`封装固定命令、超时与结果解析。记录真实程序路径、版本与支持的功能。
 
-GmSSL：选择官方 C 库及官方 GmSSL-Python 绑定，或者选定版本的官方 CLI。先阅读 [GmSSL 官方仓库](https://github.com/guanzhi/GmSSL) 与 [GmSSL-Python](https://github.com/GmSSL/GmSSL-Python)。不要因为导入名同为 `gmssl` 就直接装任意同名包；锁定来源、C 库和绑定版本。具体密码能力的范围见 [密码工具学习合同](V1-CORE-DEMO.md#crypto-3.1)。
+GmSSL：当前采用已编译的官方CLI，后续由`packages/crypto/providers/gmssl_cli.py`封装；源码、构建与能力说明见[GmSSL官方仓库](https://github.com/guanzhi/GmSSL)。MCP层调用Provider函数，实际密码运算仍由可执行程序完成。Python库/绑定是可选扩展，不是当前路线的安装前提。具体能力范围见[密码工具学习合同](V1-CORE-DEMO.md#crypto-3.1)。
 
 这一步只需确定方案并验证版本/帮助入口。不要第一天实现全部算法与证书签发。如果 GmSSL 编译成为阻塞，登记缺口，先用 OpenSSL 完成 Loop，按当前可用能力先推进；SM3在V1可用时补，安装确实阻塞则登记到V6补齐，不伪称GmSSL已验证。
 
@@ -172,29 +172,29 @@ GmSSL：选择官方 C 库及官方 GmSSL-Python 绑定，或者选定版本的�
 | 复现记录 | 有 lock、实际版本与模型配置 | 环境记录 |
 | 理解 | 能解释为何不用系统 Python、为何 Ollama 用回环地址 | 自己的说明 |
 
-全部通过后再创建 `phase0-done`。下一步V1的M1 01–02只读契约与证书适配。
+全部通过后再记录 `v0-done`。下一步V1的T001–T002只读契约与证书适配。
 
-> 上述2026年10月10日记录是历史快照。2026年10月12日Windows代码仓库已增加薄CLI入口和合同测试，真实工具/LLM/Loop仍待实现；Ubuntu仓库当前状态由本人同步后重新核对，历史的“未发现测试”不是今天的结论。
+> 上述2026年10月10日记录是历史快照。2026年10月13日迁移后，已有薄CLI、合同测试、`packages/app/agent.py`中的有限Loop，以及主项目MCP模块中的SM2工具；其他正式部件仍有待实现部分。历史的“未发现测试”不代表当前状态，阶段验收仍以实际运行证据为准。
 
 ## 本阶段的接口与实践细节
 
 以下内容属于本阶段，按任务用到的部分查阅；涉及后续能力的字段仅作为扩展合同，当前切片不要求提前全部实现。
 
-<a id="full-phase0"></a>
-<a id="full-phase0-phase020h"></a>
-#### Phase0（20h）
+<a id="full-v0"></a>
+<a id="full-v0-20h"></a>
+#### V0完整验收（20h）
 
 - [ ] 应用独立目录、Git、Python3.12/uv/venv、合法pyproject/lock。
 - [ ] Ollama与qwen3.5:4b能完成最小请求，保存版本/digest与GPU/CPU实测状态。
 - [ ] 配置样例、脱敏日志、测试与lint入口、实际工时记录。
-- [ ] Phase0无需一次装4模型/启动4服务，核心验收通过，phase0-done。
+- [ ] V0无需一次装4模型/启动4服务，核心验收通过后记录 `v0-done`。
 
 ## 本阶段签收清单
 
 - [ ] 本阶段学习技术表逐项有本人解释、独立实现/修改和失败验证证据。
-- [ ] Q01–Q16已由本人结合实现作答，证据与未覆盖边界记入docs/progress.md；AI仅审查。
+- [ ] Q01–Q16已由本人结合实现作答，证据与未覆盖边界记入本阶段文末的本人学习记录；AI仅审查。
 
-- [ ] P0 01–05真实复测，版本/解释器/lock/请求/首测可定位。
+- [ ] V0-01–V0-05真实复测，版本/解释器/lock/请求/首测可定位。
 - [ ] 本人能区分配置、连接、协议和模型错误，V0出口通过。
 
 ## 下一步
