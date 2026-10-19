@@ -156,23 +156,34 @@ asyncio.run(main())
 python -m packages.app run --question '计算教学文件 file_002 里那个文件的 SHA-256 摘要'
 ```
 
-**实测输出**（2026-10-14，本机）：
+**实测输出**（2026-10-19，本机）：
 
 ```text
 [工具]sha256_file({'file_id': 'file_002'}) -> {'ok': True, 'algorithm': 'SHA-256',
         'digest_hex': '88036eecf53de118265ae2c33ec3881e8d98cf3a29507fea6c9802ae4e1f7f4f',
         'file_id': 'file_002'}
-{"status": "completed", "answer": "文件 file_002 的 SHA-256 摘要计算完成：\n\n**SHA-256 摘要：**
- `88036eecf53de118265ae2c33ec3881e8d98cf3a29507fea6c9802ae4e1f7f4f`"}
+{"status": "completed", "run_id": "4cfdada262a549edbd3485fc47b1ed32",
+ "answer": "文件 file_002 的 SHA-256 摘要计算完成：\n\n**SHA-256 摘要：**
+  `88036eecf53de118265ae2c33ec3881e8d98cf3a29507fea6c9802ae4e1f7f4f`",
+ "evidence": [{"run_id": "4cfdada262a549edbd3485fc47b1ed32",
+   "call_id": "call_00_0", "provider_call_id": "call_57g264hc",
+   "tool_name": "sha256_file", "step_index": 0, "ok": true, "error": null,
+   "result": {"ok": true, "algorithm": "SHA-256",
+              "digest_hex": "88036eecf53de118265ae2c33ec3881e8d98cf3a29507fea6c9802ae4e1f7f4f",
+              "file_id": "file_002"},
+   "duration_ms": 5.726, "started_at": "2026-10-19T07:59:06.959973+00:00"}]}
 ```
 
-**必须核对三件事**，缺一不可：
+**必须核对四件事**，缺一不可：
 
 1. 模型提议的工具名是 `sha256_file`（不是它自己编的名字）
 2. 提议的参数是 `{"file_id": "file_002"}`（不是路径，不是编造的 ID）
 3. 最终答案里的摘要 **等于步骤 2 的独立结果**
+4. `evidence` 里有一条 `ok: true` 记录，其 `result.digest_hex` **逐字符等于**答案里的摘要
 
-第 3 条是关键。模型完全可能在没调工具的情况下编一个 64 位十六进制串出来——**长得一模一样**。只有和独立结果对照才分得清。
+第 3 条是关键。模型完全可能在没调工具的情况下编一个 64 位十六进制串出来——**长得一模一样**。只有和独立结果对照才分得清。第 4 条把这件事变成结构判定：答案里每个 64 位十六进制串都必须能追到本 run 的工具结果，不用再靠人读文本。
+
+两个号不要混淆：`call_id`（如 `call_00_0`）是应用自己的账本号，用于 evidence 与审计；`provider_call_id`（如 `call_57g264hc`）是模型侧在 `tool_calls[i].id` 给出的回执号，只用于协议绑定，tool 消息的 `tool_call_id` 优先回填它。provider 没给时回落到 `call_id`。
 
 ### 步骤 5 制造一次失败
 
@@ -212,9 +223,9 @@ python -m packages.app run --question '计算教学文件 file_002 的 SHA-256 �
 
 ## 常见坑
 
-1. **`run()` 硬编码了 model 和 base_url。** `packages/app/agent.py` 里写死了 `"qwen3.5:4b"` 和 `"http://127.0.0.1:11434"`，**没有读 `Settings`**。改 `.env` 对 `run()` 不生效。这是本段应该顺手修掉的第一个真实缺陷。
+1. **（2026-10-19 已修）`run()` 硬编码了 model 和 base_url。** 此前 `packages/app/agent.py` 里写死了 `"qwen3.5:4b"` 和 `"http://127.0.0.1:11434"`，改 `.env` 不生效。现在 `run()` 读 `Settings.CONTROLLER_MODEL` / `Settings.OLLAMA_BASE_URL`，`main()` 的 `--model` / `--base-url` 默认值也来自同一份配置（命令行参数仍可临时覆盖）。验证：`OLLAMA_BASE_URL=http://127.0.0.1:1 python -m packages.app run ...` 会连不上，说明地址确实来自配置而不是常量。
 2. **系统提示词用空字符串垫缺失参数。** 当前 `SYSTEM_PROMPT` 要求模型对缺失的必填参数填 `""`，再由 `registry.py` 的黑名单拦截。这是**用提示词补 schema 的窟窿**，而且黑名单里塞了 `"待补充"/"未提供"/"未知"` 等中文词——会被绕过，也难维护。03 段要把它收回到 schema 层。
-3. **工具结果没有内部 `call_id`。** `ToolCall.call_id` 契约写了"由应用生成"，但没用上。多轮里出现两个同名工具时，返回顺序没有显式保证。
+3. **（2026-10-19 已修）工具结果没有内部 `call_id`。** `ToolCall.call_id` 契约写了"由应用生成"，但此前没用上。现在每次调用生成 `call_{step}_{index}`，写进 `ToolResult.metadata`、`evidence[].call_id` 与 `run_id`；tool 消息的 `tool_call_id` 优先回填 provider 给的 id（示例 `call_57g264hc`），没有才回落内部号。多轮同名工具可以区分了。
 4. **`await asyncio.to_thread(call_model, ...)` 只是把阻塞调用挪走。** 它不会取消，也不会设超时上限。真正的超时在 04 段。
 5. **模型可能不调工具直接回答。** 尤其问题措辞模糊时。这不是 bug，但如果在"必须给事实"的场景出现，要靠 04 段的策略处理。
 6. **用 `data/file_001` 测会失败。** 那个目录里有 `ciphertext.der` 和 `decrypted.bin`，虽然被列入排除名单，但 `data.md` 之外的残留文件容易让人误判。用 `file_002`（只有一个 `data.md`）更干净。
