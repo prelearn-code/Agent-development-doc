@@ -60,7 +60,7 @@
 - `file_id` 必须匹配 `[A-Za-z0-9_-]{1,128}`
 - 目录不能是软链，且必须存在
 - 排除输出文件（`signature.der` / `ciphertext.der` / `decrypted.bin`）后**恰好一个**普通文件
-- 文件大小 ≤ `CRYPTO_MAX_FILE_BYTES`
+- 文件大小 ≤ `CRYPTO_MAX_FILE_BYTES`（**策略**上限；SM2 加密另有 **255 字节**的**协议**上限，见步骤 6）
 
 任何一条不满足 → `{"ok": false, "error": "invalid_file"}`，**Provider 根本没被调用**。
 
@@ -77,16 +77,24 @@ subprocess.run(
 
 用 `-binary` 而不是默认输出，是为了拿到 32 字节原始摘要，好做长度校验（`len(completed.stdout) != 32` 即失败），避免解析文本输出。
 
-### 4. Loop 只有四个分支
+### 4. Loop 是一个显式状态机
 
 ```text
-① 追加 user 消息
-② 请求模型 → 追加 assistant 消息
-③ 没有 tool_calls？→ 返回 content，结束
-④ 有 → 逐个执行 → 追加 role:tool 消息 → 回到 ②
+REQUEST_MODEL ──无 tool_calls──→ FINISH（返回 content）
+      │
+      ├──有 tool_calls 且 step_index < max_steps──→ DISPATCH_TOOLS ──→ REQUEST_MODEL
+      │
+      └──step_index >= max_steps──→ STOPPED（抛 LoopStopped）
 ```
 
-就这么简单。复杂的是每一步的**失败处理**，那是 03/04 段的事。
+对应 `packages/app/agent.py`：
+
+- `Phase` 枚举 + `_ALLOWED` 转移表：只有 `REQUEST_MODEL` 能决定结束，`DISPATCH_TOOLS` 只能回到 `REQUEST_MODEL`
+- `LoopState`：只放数据（`run_id / step_index / phase / pending_calls / evidence`），不放回调
+- `FINISH` 是正常结束；`STOPPED` 是轮次耗尽，`run()` 返回 `{"status": "stopped", "reason": "max_steps", "steps": N}`，不是崩溃
+- `step_index` 每执行一轮工具调用加一，所以 `max_steps=5` 最多请求模型 5 次
+
+就这么几个状态。复杂的是每一步的**失败处理**，那是 03/04 段的事；状态机的作用是让那些检查有确定的插入位置。
 
 ### 5. 为什么先摘要，不先证书
 
@@ -206,8 +214,9 @@ python -m packages.app run --question '计算 ../../etc/passwd 的摘要'
 选一个改动，验证正常和失败两条路都没坏。建议选**文件大小上限**：
 
 ```python
-# mcp_integration/server_crypto/openssl_tools/tools.py
-# 把 openssl_cli.MAX_MESSAGE_BYTES 换成一个更小的值（例如 1000）
+# packages/crypto/providers/openssl_cli.py
+# 把 MAX_MESSAGE_BYTES 临时换成一个更小的值（例如 1000）
+MAX_MESSAGE_BYTES = 1000
 ```
 
 然后：
@@ -219,6 +228,16 @@ python -m packages.app run --question '计算教学文件 file_002 的 SHA-256 �
 
 改回去再跑一次确认恢复。
 
+**改哪个值、影响谁**（这是本段最容易混的地方）：
+
+| 改动 | 影响的工具 | 是否需重启 |
+|---|---|---|
+| 模块常量 `openssl_cli.MAX_MESSAGE_BYTES` | 只有 `sha256_file` | 否（调用时读模块属性） |
+| 环境变量 / `.env` 的 `CRYPTO_MAX_FILE_BYTES` | `sha256_file`、`sm2_sign_message`、`sm2_verify_signature` | 是（模块导入时快照） |
+| `sm2_enc` 的 255 字节 | —— | 不受上面两个影响，是 SM2 的协议上限 |
+
+`CRYPTO_MAX_FILE_BYTES` 是**策略上限**；SM2 公钥加密的 255 字节是**算法/协议上限**（`SM2_ENCRYPT_MAX_BYTES`，GmSSL 报 `SM2_MAX_PLAINTEXT_SIZE (255)`）。两者不是一回事，别用前者去控制加密。
+
 ---
 
 ## 常见坑
@@ -226,7 +245,7 @@ python -m packages.app run --question '计算教学文件 file_002 的 SHA-256 �
 1. **（2026-10-19 已修）`run()` 硬编码了 model 和 base_url。** 此前 `packages/app/agent.py` 里写死了 `"qwen3.5:4b"` 和 `"http://127.0.0.1:11434"`，改 `.env` 不生效。现在 `run()` 读 `Settings.CONTROLLER_MODEL` / `Settings.OLLAMA_BASE_URL`，`main()` 的 `--model` / `--base-url` 默认值也来自同一份配置（命令行参数仍可临时覆盖）。验证：`OLLAMA_BASE_URL=http://127.0.0.1:1 python -m packages.app run ...` 会连不上，说明地址确实来自配置而不是常量。
 2. **（2026-10-19 已修）系统提示词用空字符串垫缺失参数。** 此前 `SYSTEM_PROMPT` 要求模型对缺失的必填参数填 `""`，再由 `registry.py` 的黑名单拦截，是**用提示词补 schema 的窟窿**，且黑名单里塞了 `"待补充"/"未提供"/"未知"` 等中文词，天然可绕过。现在提示词改为"缺参就直接询问用户"，`registry.py` 只判定缺键/空白字符串，占位词作为普通值交给业务层（`keystore.find_sm2_key` 返回 `unknown_key`）。验证：问"对教学文件 file_002 做 SM2 签名"时，模型只传 `file_id`，executor 返回 `missing_arguments`（未调用 MCP），模型据 `missing` 追问 key_id。
 3. **（2026-10-19 已修）工具结果没有内部 `call_id`。** `ToolCall.call_id` 契约写了"由应用生成"，但此前没用上。现在每次调用生成 `call_{step}_{index}`，写进 `ToolResult.metadata`、`evidence[].call_id` 与 `run_id`；tool 消息的 `tool_call_id` 优先回填 provider 给的 id（示例 `call_57g264hc`），没有才回落内部号。多轮同名工具可以区分了。
-4. **`await asyncio.to_thread(call_model, ...)` 只是把阻塞调用挪走。** 它不会取消，也不会设超时上限。真正的超时在 04 段。
+4. **`await asyncio.to_thread(call_model, ...)` 只是把阻塞调用挪走。** 单次请求有 `packages/llm/client.py` 的 `LLM_TIMEOUT_S`（默认 120 秒）兜底，但 `to_thread` 本身**不可取消**（外层取消传不进去），也**没有整回合 deadline**——多轮累加可以远超 120 秒。这两件事在 04 段。
 5. **模型可能不调工具直接回答。** 尤其问题措辞模糊时。这不是 bug，但如果在"必须给事实"的场景出现，要靠 04 段的策略处理。
 6. **用 `data/file_001` 测会失败。** 那个目录里有 `ciphertext.der` 和 `decrypted.bin`，虽然被列入排除名单，但 `data.md` 之外的残留文件容易让人误判。用 `file_002`（只有一个 `data.md`）更干净。
 
@@ -237,7 +256,7 @@ python -m packages.app run --question '计算教学文件 file_002 的 SHA-256 �
 1. 画出这次调用从用户问题到最终回答的完整链路，标出**真正发生密码运算**的那一步。
 2. 模型没调工具却编了一个摘要，你怎么发现？说明你的验证路径。
 3. `file_id` 为什么不能是路径？如果模型坚持传 `../../etc/passwd`，哪一行代码拦住它？
-4. Loop 在什么条件下结束？如果没有 `max_steps` 会怎样？
+4. Loop 有几个结束状态？分别由什么触发？如果没有 `max_steps`，`STOPPED` 还会出现吗？
 5. 你改了哪个约束？正常和失败两条路分别变成什么？
 
 ---
