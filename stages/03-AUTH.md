@@ -29,24 +29,29 @@ tool_calls（不可信）
 
 | 文件 | 职责 | 现状 |
 |---|---|---|
-| `packages/core/models.py` | `ToolResult` / `ToolSpec` / `RiskLevel` / `DEFAULT_POLICY` | ✅ 已定义，**但零调用方** |
-| `packages/core/errors.py` | 7 个异常类型 | ✅ 已定义，**但零调用方** |
-| `tools/executor.py` | 唯一执行入口 | ⚠️ 返回裸 dict，需改成 `ToolResult` |
-| `tools/registry.py` | schema 校验 | ⚠️ 只做 schema，无授权 |
-| `packages/security/resources.py` | **资源解析与越界拒绝** | ❌ 空桩 |
-| `packages/security/policy.py` | **风险策略判定** | ❌ 空桩 |
-| `mcp_integration/server_crypto/gmssl_tools/sm_tools.py` | 4 个写工具的注册 | ⚠️ **需摘掉注册** |
+| `packages/core/models.py` | `ToolResult` / `ToolSpec` / `RiskLevel` / `DEFAULT_POLICY` | ✅ 已接线（executor / registry / policy 使用） |
+| `packages/core/errors.py` | 7 个异常类型 | ✅ 已接线（executor 分类、policy 抛错） |
+| `tools/executor.py` | 唯一执行入口 | ✅ 返回 `ToolResult`，四道闸门已接 |
+| `tools/registry.py` | schema 校验 + `ToolSpec` 规格表 | ✅ schema 校验、风险表、`resource_args(spec)` |
+| `packages/security/resources.py` | **资源解析与越界拒绝** | ✅ 机制层 + 授权层已实现 |
+| `packages/security/policy.py` | **风险策略判定** | ✅ `check_policy` 已实现 |
+| `mcp_integration/server_crypto/gmssl_tools/sm_tools.py` | 4 个写工具的注册 | ✅ 已摘掉（只注册 `sm2_verify_signature`） |
 
-### 一个必须知道的事实
+### 接线状态（2026-10-19 已完成）
 
-契约层（`ToolResult`/`ToolSpec`/`errors.py`）**已经写好了，但没有任何生产代码 import 它们**。grep 确认只有 `packages/core/__init__.py` 做了 re-export。
+契约层（`ToolResult`/`ToolSpec`/`errors.py`）此前只有定义、没有生产调用方；现在已接线：
 
-后果是文档里那两条契约**当前都不成立**：
+- `execute_tool` 直接返回 `ToolResult`，异常分类也在这一层完成
+- `tools/registry.py` 维护 `ToolSpec`（风险等级来自本地表，schema 来自 MCP 发现），`resource_args(spec)` 从 schema 的 `x-resource` 读资源标记
+- `packages/security/policy.py` 读 `DEFAULT_POLICY`；`packages/security/resources.py` 负责路径与密钥目录解析
+- 写工具在 02–04 段不注册，模型侧看不到
 
-- "异常由 `execute_tool` 转为 ToolResult" → 现在是裸 `dict`，从不转换
-- "`DEFAULT_POLICY` 生效" → 没有任何代码读它
+复现证据：
 
-**这一段的第一个任务就是把这个断掉的接线接上。**
+```bash
+grep -rn "ToolResult" tools/executor.py
+grep -rn "DEFAULT_POLICY" packages/security/policy.py
+```
 
 ---
 
@@ -87,6 +92,8 @@ schema: file_id 是 1–128 个 [A-Za-z0-9_-] 字符     ← 形状
 
 06 段加上身份之后，同一个 `file_002` 对不同用户会有不同结果。**schema 永远回答不了"该不该"**。
 
+03 段还没有用户身份，所以这一段实际做的是**资源边界**（格式、越界、软链、存在性、大小），"这个文件属于哪个用户/项目"的 ACL 留到 05/06 段。
+
 ### 4. 风险等级决定"能不能自动跑"
 
 | 等级 | 含义 | 默认策略 |
@@ -122,16 +129,26 @@ schema: file_id 是 1–128 个 [A-Za-z0-9_-] 字符     ← 形状
 
 ### 步骤 1 先把契约接上
 
-把 `execute_tool` 的返回从裸 dict 改成 `ToolResult`：
+把 `execute_tool` 的返回从裸 dict 改成 `ToolResult`。最终实现把三个东西分开：
 
 ```python
 async def execute_tool(session, name, arguments, tools) -> ToolResult[Any]:
     ...
-    if error is not None:
-        return ToolResult.fail(error["message"], error_type=error["error"])
+    if error is not None:  # schema 校验失败
+        return ToolResult.fail(
+            str(error.get("error", "invalid_arguments")),   # 机器可读错误码
+            error_type="ToolValidationError",                # 异常分类
+            message=str(error.get("message", "工具参数无效。")),
+            tool_name=name,
+            wire=error,                                      # 模型可见的原始 dict
+        )
     ...
-    return ToolResult.ok(result, tool_name=name)
+    return ToolResult.ok(payload, tool_name=name, wire=payload)
 ```
+
+- `error`：进 evidence / Trace 的错误码
+- `error_type`：异常分类（`ToolValidationError` / `ToolNotFoundError` / `ToolPermissionError` / `ToolError`）
+- `wire`：保持模型侧报文形态不变
 
 同时让 handler 的异常在这里落地：
 
@@ -175,27 +192,41 @@ asyncio.run(main())
 
 ### 步骤 3 实现 `security/resources.py`
 
-职责只有一件：把不可信的资源 ID 变成可信的路径，越界就拒绝。
+文件里分两组函数：**机制层**（服务端与 executor 共用）和**授权层**（应用侧闸门）。
 
 ```python
-from pathlib import Path
+# 机制层：失败抛 ResourceError（ValueError），不依赖应用授权语义
+class ResourceError(ValueError):
+    """资源 ID 不可用：格式、越界、不存在、不唯一或过大。"""
 
-def resolve_file(file_id: str) -> Path:
-    """把服务端 ID 解析为受控路径；任何不合规都抛 ToolPermissionError。"""
-    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", file_id):
-        raise ToolPermissionError("invalid file_id", file_id=file_id)
-    root = get_settings().crypto_data_root.resolve()
-    path = (root / file_id).resolve()
-    if not path.is_relative_to(root):          # 关键：防目录穿越
-        raise ToolPermissionError("path escapes root", file_id=file_id)
-    if path.is_symlink() or not path.is_dir():
-        raise ToolPermissionError("not a directory", file_id=file_id)
+
+def resolve_file_dir(root: Path, file_id: str) -> Path:
+    if _ID_PATTERN.fullmatch(file_id) is None:
+        raise ResourceError("invalid file ID")
+    base = root.resolve()
+    candidate = base / file_id
+    if candidate.is_symlink():                 # 先判软链，再 resolve
+        raise ResourceError("file directory unavailable")
+    path = candidate.resolve()
+    if not path.is_relative_to(base):          # 关键：防目录穿越
+        raise ResourceError("path escapes root")
+    if not path.is_dir():
+        raise ResourceError("file directory unavailable")
     return path
+
+
+# 授权层：把机制失败转成契约异常
+def resolve_file(file_id: str, *, root: Path | None = None) -> Path:
+    try:
+        return resolve_file_dir(_root(root), file_id)
+    except ResourceError as exc:
+        raise ToolPermissionError(str(exc), file_id=file_id) from exc
 ```
 
 三个要点：
 
-- **`resolve()` 之后再比较**，否则 `..` 和软链都能绕过
+- **软链要在 `resolve()` 之前判**：`resolve()` 会跟随软链，解析完再 `is_symlink()` 永远为 False
+- **`resolve()` 之后再比较越界**，否则 `..` 能绕过
 - **`is_relative_to` 而不是 `startswith`**，因为字符串前缀会把 `/data_evil` 当成 `/data` 的子目录
 - 越界抛**专门的权限异常**，不要复用"文件不存在"
 
@@ -205,11 +236,13 @@ def resolve_file(file_id: str) -> Path:
 def check_policy(spec: ToolSpec) -> None:
     policy = DEFAULT_POLICY[spec.risk_level]
     if not policy.allowed:
-        raise ToolPermissionError("risk level not allowed", risk=spec.risk_level.name)
+        raise ToolPermissionError(
+            "该风险等级不允许执行。", tool=spec.name, risk=spec.risk_level.name
+        )
     if not policy.auto:
         raise ToolPermissionError(
-            "requires approval, not implemented until stage 06",
-            tool=spec.tool_id, risk=spec.risk_level.name,
+            "该操作需要审批，第 06 段之前不允许执行。",
+            tool=spec.name, risk=spec.risk_level.name,
         )
 ```
 
@@ -218,14 +251,16 @@ def check_policy(spec: ToolSpec) -> None:
 ### 步骤 5 让执行入口按顺序调用
 
 ```text
-validate_tool_arguments  →  schema
-lookup_toolspec          →  登记（不存在 → ToolNotFoundError）
-resolve_resource         →  resources.py
-check_policy             →  policy.py
-call_provider            →  执行
+validate_tool_arguments            →  schema
+build_toolspecs / specs[name]      →  登记（不存在 → ToolNotFoundError）
+require_message_file / require_key →  资源边界（→ ToolPermissionError）
+check_policy(spec)                 →  风险策略（→ ToolPermissionError）
+session.call_tool                  →  执行
 ```
 
-每一步失败都返回 `ToolResult.fail(...)`，带**不同的 `error_type`**。
+资源参数从哪来：工具签名上的 `x-resource` 标记（`packages/core/resource_schema.py` 的 `FileId` / `KeyId`），经 `input_schema` 传到应用侧，`registry.resource_args(spec)` 读取。schema 没标的参数不当作资源，交给服务端复查。
+
+每一步失败都返回 `ToolResult.fail(...)`，带**不同的 `error_type`**；拒绝时 `session.call_tool` 完全不被 await。
 
 ### 步骤 6 验证六个反例
 
@@ -235,10 +270,12 @@ call_provider            →  执行
 | `file_id=123`（整数） | `ToolValidationError` | schema 拦类型错 |
 | `file_id="../../etc/passwd"` | `ToolPermissionError` | 目录穿越被拒 |
 | 不存在的 `file_id` | `ToolPermissionError` | 存在性检查 |
-| 超过大小上限的文件 | `ToolValidationError` | 边界值 |
+| 超过大小上限的文件 | `ToolPermissionError` | 资源预算边界（不是参数形状） |
 | 调用写工具名 | `ToolNotFoundError` | 已摘掉注册 |
 
 **每一个都要证明 Provider 没有被调用**。方法：给 Provider 函数打桩计数，或看 `subprocess` 是否真的起过。
+
+> 大小上限归到资源/权限层（`ToolPermissionError`），和 schema 的形状错误（`ToolValidationError`）分开：前者是"这个资源当前不允许处理"，后者是"参数本身不合法"。
 
 ---
 
