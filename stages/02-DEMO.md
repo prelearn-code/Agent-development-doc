@@ -224,7 +224,7 @@ python -m packages.app run --question '计算教学文件 file_002 的 SHA-256 �
 ## 常见坑
 
 1. **（2026-10-19 已修）`run()` 硬编码了 model 和 base_url。** 此前 `packages/app/agent.py` 里写死了 `"qwen3.5:4b"` 和 `"http://127.0.0.1:11434"`，改 `.env` 不生效。现在 `run()` 读 `Settings.CONTROLLER_MODEL` / `Settings.OLLAMA_BASE_URL`，`main()` 的 `--model` / `--base-url` 默认值也来自同一份配置（命令行参数仍可临时覆盖）。验证：`OLLAMA_BASE_URL=http://127.0.0.1:1 python -m packages.app run ...` 会连不上，说明地址确实来自配置而不是常量。
-2. **系统提示词用空字符串垫缺失参数。** 当前 `SYSTEM_PROMPT` 要求模型对缺失的必填参数填 `""`，再由 `registry.py` 的黑名单拦截。这是**用提示词补 schema 的窟窿**，而且黑名单里塞了 `"待补充"/"未提供"/"未知"` 等中文词——会被绕过，也难维护。03 段要把它收回到 schema 层。
+2. **（2026-10-19 已修）系统提示词用空字符串垫缺失参数。** 此前 `SYSTEM_PROMPT` 要求模型对缺失的必填参数填 `""`，再由 `registry.py` 的黑名单拦截，是**用提示词补 schema 的窟窿**，且黑名单里塞了 `"待补充"/"未提供"/"未知"` 等中文词，天然可绕过。现在提示词改为"缺参就直接询问用户"，`registry.py` 只判定缺键/空白字符串，占位词作为普通值交给业务层（`keystore.find_sm2_key` 返回 `unknown_key`）。验证：问"对教学文件 file_002 做 SM2 签名"时，模型只传 `file_id`，executor 返回 `missing_arguments`（未调用 MCP），模型据 `missing` 追问 key_id。
 3. **（2026-10-19 已修）工具结果没有内部 `call_id`。** `ToolCall.call_id` 契约写了"由应用生成"，但此前没用上。现在每次调用生成 `call_{step}_{index}`，写进 `ToolResult.metadata`、`evidence[].call_id` 与 `run_id`；tool 消息的 `tool_call_id` 优先回填 provider 给的 id（示例 `call_57g264hc`），没有才回落内部号。多轮同名工具可以区分了。
 4. **`await asyncio.to_thread(call_model, ...)` 只是把阻塞调用挪走。** 它不会取消，也不会设超时上限。真正的超时在 04 段。
 5. **模型可能不调工具直接回答。** 尤其问题措辞模糊时。这不是 bug，但如果在"必须给事实"的场景出现，要靠 04 段的策略处理。
