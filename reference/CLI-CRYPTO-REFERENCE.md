@@ -1,6 +1,6 @@
 # OpenSSL 与 GmSSL 命令行速查
 
-本文给出可在临时教学数据上运行的摘要、密钥生成、签名验签、证书与加解密例子。两个程序的完整子命令目录及逐项 `-help` 见 [OpenSSL 帮助索引](CLI-OPENSSL-HELP.md) 和 [GmSSL 帮助索引](CLI-GMSSL-HELP.md)：前者覆盖 53 个标准命令、19 个摘要别名和 79 个加密别名，后者覆盖 90 个子命令。本文是**本机可执行程序的操作参考**，不是 Agent 或 MCP 已实现功能清单。实现顺序仍以 [Roadmap](ROADMAP.md) 为准：V1 先接 SHA-256 只读摘要，V4 再开放经过授权和审批的写操作。新增 Provider 时先在命令行核对能力，再封装固定的程序和参数数组；模型只能传资源 ID 与允许列表中的业务参数。
+本文给出可在临时教学数据上运行的摘要、密钥生成、签名验签、证书与加解密例子。两个程序的完整子命令目录及逐项 `-help` 见 [OpenSSL 帮助索引](CLI-OPENSSL-HELP.md) 和 [GmSSL 帮助索引](CLI-GMSSL-HELP.md)：前者覆盖 53 个标准命令、19 个摘要别名和 79 个加密别名，后者覆盖 90 个子命令。本文是**本机可执行程序的操作参考**，不是 Agent 或 MCP 已实现功能清单。实现顺序仍以 [Roadmap](../ROADMAP.md) 为准：02 段先接 SHA-256 只读摘要，06 段再开放经过授权和审批的写操作。新增 Provider 时先在命令行核对能力，再封装固定的程序和参数数组；模型只能传资源 ID 与允许列表中的业务参数。
 
 ## 版本、路径与练习约定
 
@@ -33,7 +33,7 @@ printf abc > "$WORK/plain.txt"  # 恰好 3 字节，没有换行
 | `openssl dgst -sha256 <file>` | 对文件**原始字节**计算 SHA-256；可加 `-binary` 得到 32 字节二进制摘要 | `ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad` |
 | `gmssl sm3 -in <file>` | 对文件原始字节计算 SM3；默认十六进制，`-bin` 为 32 字节二进制摘要 | `66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0` |
 
-GmSSL 还提供 `sm3 -in_str <string>` 和默认 stdin 输入；`-in` 与 `-in_str` 不可同时使用。`sm3 -pubkey ... -id ...` 会加入 SM2 的 Z 值，不等于普通文件 SM3 摘要。Agent 首个 `digest_file` 固定为 OpenSSL/SHA-256，后续再按允许列表增加 GmSSL/SM3。[V1 单工具步骤](stages/V1-CORE-DEMO.md#first-demo)
+GmSSL 还提供 `sm3 -in_str <string>` 和默认 stdin 输入；`-in` 与 `-in_str` 不可同时使用。`sm3 -pubkey ... -id ...` 会加入 SM2 的 Z 值，不等于普通文件 SM3 摘要。Agent 首个 `digest_file` 固定为 OpenSSL/SHA-256，后续再按允许列表增加 GmSSL/SM3。[02 段单工具步骤](../stages/02-DEMO.md)
 
 **带密钥的 SM3 与口令派生是不同操作。**本机 `sm3_hmac -help` 要求十六进制密钥；`sm3_pbkdf2 -help` 要求口令、8–64 字节盐、迭代次数和输出长度：
 
@@ -135,7 +135,7 @@ cmp "$WORK/plain.txt" "$WORK/rsa-recovered.txt"
 cmp "$WORK/plain.txt" "$WORK/aes-recovered.txt"
 ```
 
-`-e`/`-d` 选择加密/解密，`-in`/`-out` 指定文件，`-pass file:...` 指定口令来源；`-salt` 为加密添加盐，`-pbkdf2 -iter 200000` 指定口令派生方式，解密必须使用相同迭代次数。**CBC 不提供认证**：解密完成或 `cmp` 相等不代表它满足项目 V4 的认证加密要求。`openssl enc` 命令也不支持 GCM/CCM；OpenSSL *库* 支持这些算法，不能据此推断该命令支持。[OpenSSL `enc` 文档](https://docs.openssl.org/3.0/man1/openssl-enc/)
+`-e`/`-d` 选择加密/解密，`-in`/`-out` 指定文件，`-pass file:...` 指定口令来源；`-salt` 为加密添加盐，`-pbkdf2 -iter 200000` 指定口令派生方式，解密必须使用相同迭代次数。**CBC 不提供认证**：解密完成或 `cmp` 相等不代表它满足项目 06 段的认证加密要求。`openssl enc` 命令也不支持 GCM/CCM；OpenSSL *库* 支持这些算法，不能据此推断该命令支持。[OpenSSL `enc` 文档](https://docs.openssl.org/3.0/man1/openssl-enc/)
 
 本机的另一条 CLI 路线是 CMS 容器：已用上面创建的教学证书验证 `cms -aes-256-gcm` 加解密往返。它的输出是 **CMS DER 容器**，不能与 `enc` 的裸文件格式混用：
 
@@ -148,7 +148,7 @@ cmp "$WORK/plain.txt" "$WORK/aes-recovered.txt"
 cmp "$WORK/plain.txt" "$WORK/cms-recovered.txt"
 ```
 
-`-encrypt` 最后的位置参数是接收者证书，`-decrypt` 的 `-recip`/`-inkey` 是接收者证书/私钥；`-binary` 避免文本规范化改变输入字节，`-outform DER` 与 `-inform DER` 必须配对。本机命令往返成功只证明此组合可运行；V4 接入前仍要固定证书授权、容器格式、篡改失败处理、临时输出和审批。[OpenSSL `cms` 帮助](CLI-OPENSSL-HELP.md#openssl-cms)、[V4 密码写操作](stages/V4-APPROVAL-CRYPTO.md)
+`-encrypt` 最后的位置参数是接收者证书，`-decrypt` 的 `-recip`/`-inkey` 是接收者证书/私钥；`-binary` 避免文本规范化改变输入字节，`-outform DER` 与 `-inform DER` 必须配对。本机命令往返成功只证明此组合可运行；06 段接入前仍要固定证书授权、容器格式、篡改失败处理、临时输出和审批。[OpenSSL `cms` 帮助](CLI-OPENSSL-HELP.md#openssl-cms)、[06 段审批与写操作](../stages/06-APPROVAL.md)
 
 ## GmSSL：SM2 密钥、签名验签与短消息加解密
 
@@ -167,7 +167,7 @@ cmp "$WORK/plain.txt" "$WORK/cms-recovered.txt"
 | `sm2sign -key <private.pem> -pass ... -id <identity> -in <file> -out <sig>` | 对文件签名；输出为**二进制 DER** 签名。省略 `-in`/`-out` 时分别使用 stdin/stdout。 |
 | `sm2verify -pubkey <public.pem> -id <identity> -in <file> -sig <sig>` | 用同一原文、签名和 signer ID 验签；也可用 `-cert` 指定证书代替 `-pubkey`。 |
 
-`-id` 必须在签名和验签时一致；未给出时本机帮助显示默认值为 `1234567812345678`。当前项目把它固定在 [GmSSL Provider](../Agent-development-code/packages/crypto/providers/gmssl_cli.py)，实际调用仍要核对结果。现有文件签名的 **1 MiB** 上限是项目策略，并非 `sm2sign` 算法的统一最大消息长度。
+`-id` 必须在签名和验签时一致；未给出时本机帮助显示默认值为 `1234567812345678`。当前项目把它固定在 [GmSSL Provider](../../Agent-development-code/packages/crypto/providers/gmssl_cli.py)，实际调用仍要核对结果。现有文件签名的 **1 MiB** 上限是项目策略，并非 `sm2sign` 算法的统一最大消息长度。
 
 SM2 公钥加密是**短消息操作**。本机 `sm2encrypt -help` 明确写明明文最多 **255 字节**；密文是二进制 DER：
 
@@ -228,7 +228,7 @@ cmp "$WORK/plain.txt" "$WORK/sm4-recovered.txt"
 | `-taglen <bytes>` | 认证标签长度，默认 16 字节；解密时要和加密时一致。 |
 | `-in <file>` / `-out <file>` | 解密输入格式是 `ciphertext || tag`，即密文后接标签；解密输出是明文。 |
 
-认证失败必须视为整个解密失败。本机错误 AAD 测试返回非零，但 `-out` 路径仍留下 **0 字节文件**；Provider 应写受控临时路径，验证成功后才发布产物，并在失败时清理。上面的 SM4-GCM 命令只能证明 CLI 有此能力，**不代表本项目已经接入 V4 加解密工具**。
+认证失败必须视为整个解密失败。本机错误 AAD 测试返回非零，但 `-out` 路径仍留下 **0 字节文件**；Provider 应写受控临时路径，验证成功后才发布产物，并在失败时清理。上面的 SM4-GCM 命令只能证明 CLI 有此能力，**不代表本项目已经接入 06 段的加解密工具**。
 
 同一个本机程序还支持 SM4-CCM；本机帮助限定 IV 为 7–13 字节、标签为 4–16 字节。这里使用 12 字节 IV 和默认标签长度：
 
@@ -256,7 +256,7 @@ SM4_CBC_IV=$("$GMSSL_BIN" rand -outlen 16 -hex)
 cmp "$WORK/plain.txt" "$WORK/sm4-cbc-recovered.txt"
 ```
 
-SM4-CBC 没有 GCM/CCM 的认证标签，**不能替代 V4 的 AEAD**。三个模式的命令行往返都已经用临时 `abc` 文件验证；这只覆盖正常路径，不能代替篡改、重复 nonce、权限和失败清理验证。[GmSSL `sm4_cbc` 帮助](CLI-GMSSL-HELP.md#gmssl-sm4_cbc)、[GmSSL `sm4_ccm` 帮助](CLI-GMSSL-HELP.md#gmssl-sm4_ccm)
+SM4-CBC 没有 GCM/CCM 的认证标签，**不能替代 06 段的 AEAD**。三个模式的命令行往返都已经用临时 `abc` 文件验证；这只覆盖正常路径，不能代替篡改、重复 nonce、权限和失败清理验证。[GmSSL `sm4_cbc` 帮助](CLI-GMSSL-HELP.md#gmssl-sm4_cbc)、[GmSSL `sm4_ccm` 帮助](CLI-GMSSL-HELP.md#gmssl-sm4_ccm)
 
 ## GmSSL：SM9 身份密码与 Kyber KEM 示例
 
@@ -305,9 +305,9 @@ cmp "$WORK/kyber-key.bin" "$WORK/kyber-recovered-key.bin"
 
 | 命令行能力 | Provider | MCP 工具 | 当前状态 |
 |---|---|---|---|
-| OpenSSL SHA-256 | `packages/crypto/providers/openssl_cli.py` | `mcp_integration/server_crypto/openssl_tools/tools.py` 的 `digest_file` | V1 待实现；先独立算摘要，再接 MCP/Agent。 |
+| OpenSSL SHA-256 | `packages/crypto/providers/openssl_cli.py` | `mcp_integration/server_crypto/openssl_tools/tools.py` 的 `digest_file` | 02 段已接入（`digest_file`）；先独立对照，再经执行器。 |
 | GmSSL SM3 | `packages/crypto/providers/gmssl_cli.py` 后续函数 | 在同一个 Crypto MCP Server 中注册只读摘要工具或固定算法选项 | 待实现；先核对与 SHA-256 的结果/参数区分。 |
 | GmSSL SM2 密钥、签名、验签 | `packages/crypto/keystore.py` 与 `gmssl_cli.py` | `gmssl_tools/sm_tools.py` | 教学 Demo 已实现；正式权限/审批仍待后续阶段。 |
-| RSA/SM2 加解密、SM4-GCM 等写操作 | 先确定本机真实支持的命令与受控服务 | V4 先接一种固定审批的认证加密；其他能力按阶段需求扩展 | 命令示例只是练习，不能据此宣称 MCP 已开放。 |
+| RSA/SM2 加解密、SM4-GCM 等写操作 | 先确定本机真实支持的命令与受控服务 | 06 段先接一种固定审批的认证加密；其他能力按阶段需求扩展 | 命令示例只是练习，不能据此宣称 MCP 已开放。 |
 
-命令帮助是本机参数的最终核对入口：`"$OPENSSL_BIN" <command> -help` 与 `"$GMSSL_BIN" <command> -help`。OpenSSL 参考：[genpkey](https://docs.openssl.org/3.0/man1/openssl-genpkey/)、[pkeyutl](https://docs.openssl.org/3.0/man1/openssl-pkeyutl/)、[dgst](https://docs.openssl.org/3.0/man1/openssl-dgst/)、[enc](https://docs.openssl.org/3.0/man1/openssl-enc/)；GmSSL 参数以本机 `3.3.0-dev.1183` 的各子命令帮助为准。文件上限、权限、审批和失败验证分别按 [V1](stages/V1-CORE-DEMO.md)、[V3](stages/V3-MCP.md)、[V4](stages/V4-APPROVAL-CRYPTO.md) 阶段验收。
+命令帮助是本机参数的最终核对入口：`"$OPENSSL_BIN" <command> -help` 与 `"$GMSSL_BIN" <command> -help`。OpenSSL 参考：[genpkey](https://docs.openssl.org/3.0/man1/openssl-genpkey/)、[pkeyutl](https://docs.openssl.org/3.0/man1/openssl-pkeyutl/)、[dgst](https://docs.openssl.org/3.0/man1/openssl-dgst/)、[enc](https://docs.openssl.org/3.0/man1/openssl-enc/)；GmSSL 参数以本机 `3.3.0-dev.1183` 的各子命令帮助为准。文件上限、权限、审批和失败验证分别按 [02](../stages/02-DEMO.md)、[06](../stages/06-APPROVAL.md)、[07](../stages/07-MCP.md) 段验收。
