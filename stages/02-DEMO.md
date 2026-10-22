@@ -242,6 +242,37 @@ python -m packages.app run --question '计算教学文件 file_002 的 SHA-256 �
 
 `CRYPTO_MAX_FILE_BYTES` 是**策略上限**；SM2 公钥加密的 255 字节是**算法/协议上限**（`SM2_ENCRYPT_MAX_BYTES`，GmSSL 报 `SM2_MAX_PLAINTEXT_SIZE (255)`）。两者不是一回事，别用前者去控制加密。
 
+## 直接调用速查
+
+都在仓库根目录、激活 `.venv` 后执行（`cd Agent-development-code && source .venv/bin/activate`）。
+
+```bash
+# 1) 直接调 Provider（不经过模型和 MCP）
+python -c "from pathlib import Path; from packages.crypto.providers.openssl_cli import sha256_digest_file; print(sha256_digest_file(Path('data/file_002/data.md')))"
+
+# 2) 从 MCP 层调（经过 stdio 连接，不经过模型）
+python - <<'PY'
+import asyncio
+from mcp_integration.client.connection import connect_tools
+
+async def main():
+    async with connect_tools() as (session, tools):
+        print([t["function"]["name"] for t in tools])
+        result = await session.call_tool("sha256_file", {"file_id": "file_002"})
+        print(result.structured_content)
+
+asyncio.run(main())
+PY
+
+# 3) 完整链路（模型提议 → 执行 → 回传）
+python -m packages.app run --question '计算教学文件 file_002 的 SHA-256 摘要'
+
+# 4) 独立对照
+openssl dgst -sha256 data/file_002/data.md
+```
+
+**预期**：1、2、3 返回的摘要都是 `88036eec…f4f`，与 4 的输出逐字符一致。
+
 ---
 
 ## 常见坑

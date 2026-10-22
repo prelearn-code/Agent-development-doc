@@ -277,6 +277,86 @@ session.call_tool                  →  执行
 
 > 大小上限归到资源/权限层（`ToolPermissionError`），和 schema 的形状错误（`ToolValidationError`）分开：前者是"这个资源当前不允许处理"，后者是"参数本身不合法"。
 
+## 直接调用速查
+
+都在仓库根目录、激活 `.venv` 后执行（`cd Agent-development-code && source .venv/bin/activate`）。
+
+```bash
+# 1) 工具池：02–04 段只应有只读工具
+python - <<'PY'
+import asyncio
+from mcp_integration.client.connection import connect_tools
+
+async def main():
+    async with connect_tools() as (session, tools):
+        print([t["function"]["name"] for t in tools])
+
+asyncio.run(main())
+PY
+
+# 2) 规格表 + 资源标记
+python - <<'PY'
+import asyncio
+from mcp_integration.client.connection import connect_tools
+from tools.registry import build_toolspecs, resource_args
+
+async def main():
+    async with connect_tools() as (session, tools):
+        for name, spec in build_toolspecs(tools).items():
+            print(name, spec.risk_level.name, "read_only=", spec.read_only, resource_args(spec))
+
+asyncio.run(main())
+PY
+
+# 3) 资源闸门：不经过模型，直接看拒绝
+python - <<'PY'
+import asyncio
+from tools.executor import execute_tool
+
+TOOLS = [{"type": "function", "function": {"name": "sha256_file", "parameters": {
+    "type": "object",
+    "properties": {"file_id": {"type": "string", "x-resource": "file"}},
+    "required": ["file_id"],
+}}}]
+
+async def main():
+    outcome = await execute_tool(None, "sha256_file", {"file_id": "../../etc/passwd"}, TOOLS)
+    print(outcome.error_type, outcome.metadata["wire"])
+
+asyncio.run(main())
+PY
+
+# 4) 风险策略：直接对一个写工具规格做判定
+python - <<'PY'
+from packages.core.models import RiskLevel, ToolSpec
+from packages.security.policy import check_policy
+
+spec = ToolSpec(name="sm2_sign_message", description="", input_schema={},
+                risk_level=RiskLevel.L2_WRITE, read_only=False)
+try:
+    check_policy(spec)
+except Exception as exc:
+    print(type(exc).__name__, exc)
+PY
+
+# 5) 完整链路：让模型去碰一个不存在的资源
+python -m packages.app run --question '计算教学文件 file_999 的 SHA-256 摘要'
+
+# 6) 授权测试（含六个反例）与调用过程演示
+python -m pytest -q tests/test_authorization.py
+python -m pytest -s -q --flow tests/test_flow_demo.py
+```
+
+**预期**：
+
+- 1 只列出 `sm2_verify_signature`、`sha256_file`
+- 2 两个工具都是 `L0_READ`，资源参数分别是 `{"file_id": "file"}` 与 `{"file_id": "file", "key_id": "key"}`
+- 3 输出 `ToolPermissionError` +
+  `{'ok': False, 'error': 'permission_denied', 'message': "invalid file ID (...)"}`
+- 4 输出 `ToolPermissionError 该操作需要审批，第 06 段之前不允许执行。`
+- 5 的 `evidence` 里 `ok=false, error=permission_denied`，MCP 未被调用
+- 6 分别输出 `8 passed` 和带 `[flow]` 的调用过程
+
 ---
 
 ## 常见坑
