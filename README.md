@@ -17,6 +17,7 @@
 |---|---|
 | **全流程长什么样**（先读这个） | [FLOW.md](FLOW.md) |
 | 现在该做哪一段 | [ROADMAP.md](ROADMAP.md) |
+| **换一台设备复现环境** | [ENVIRONMENT.md](ENVIRONMENT.md)，照着命令执行 |
 | 接口契约（ToolResult / ToolSpec / 执行顺序） | [CONTRACTS.md](CONTRACTS.md) |
 | 开始写代码 | [stages/01-ENV.md](stages/01-ENV.md) 起，按序 |
 | 卡住了 | [TROUBLESHOOT.md](TROUBLESHOOT.md) |
@@ -61,8 +62,11 @@
 ├── Agent-development-doc/      ← 本仓库（只有 Markdown）
 ├── Agent-development-code/     ← 实现
 ├── openssl/                    ← 官方源码
-└── GmSSL/                      ← 官方源码
+├── GmSSL/                      ← 官方源码
+└── .local/gmssl/               ← 生成物：GmSSL 安装 prefix
 ```
+
+**换一台设备怎么装、怎么验收：照 [ENVIRONMENT.md](ENVIRONMENT.md) 执行**（克隆 → 依赖 → 编译 GmSSL → Ollama → 验收命令清单）。下面这张表是历史记录，当前实测值以那份文档为准。
 
 实测基线（2026-10-10 记录，**开工前重新核对**）：
 
@@ -76,7 +80,7 @@
 | 模型 | `qwen3.5:4b`（3.3 GB，要求 Ollama ≥ 0.30.0） |
 | OpenSSL CLI | 3.0.2（`/bin/openssl`） |
 | GmSSL CLI | 3.3.0-dev.1183（`../.local/gmssl/bin/gmssl`） |
-| GPU | RTX 5060 Ti，驱动 591.86 |
+| GPU | RTX 5060 Ti，驱动 610.88（2026-10 记录为 591.86，已随驱动更新） |
 
 **不要**把仓库放在 `/mnt/c` 或 `/mnt/d`：9P 协议下 venv / node_modules 会慢数倍。
 
@@ -97,7 +101,7 @@ python -m pytest -q                                      # 行为测试
 python -m ruff check .                                   # 风格
 ```
 
-> **已知基线缺口**：`packages/core/models.py` 有 5 个 ruff UP 系列告警。新增改动不要扩大它，但也别为了清零去动契约文件。
+> **基线告警已清零**（2026-10-29 实测 `ruff check .` 输出 `All checks passed!`）。历史上 `packages/core/models.py` 曾有 5 个 UP 系列告警；旧记录里提到它时按"已修"理解，不要为了复现告警去改契约文件。
 
 ---
 
